@@ -3,7 +3,7 @@ let u = import("../utils.gr")
 
 fn now_body() {
 	return [
-		["p", ["class", "journal-updated"], "Last updated on 2025-10-16."],
+		["p", ["class", "journal-updated"], "Last updated on 2026-07-15."],
 		["ul", ["class", "journal-list"], [
 			["li", [], [
 				"Working on ",
@@ -16,18 +16,12 @@ fn now_body() {
 				".",
 			]],
 			["li", [], [
-				"I've built Grotsky, a toy programming language made with Rust. Sometimes I still poke around with it.",
+				"I've built Grotsky, a toy programming language made with Rust before LLMs. Sometimes I still poke around with it.",
 			]],
 			["li", [], [
-				"Ran a 42km marathon to raise money for Alzheimer's Research. I use a Coros watch — it's awesome.",
-			]],
-			["li", [], [
-				"Learning French and going to the ",
-				["a", ["href", "https://www.bierecode.com/"], "Beer and Code meetup"],
-				".",
-			]],
-			["li", [], [
-				"Working as a Software Engineer at Gencove, building the future of genome sequencing."
+				"Head of Engineering at ",
+				["a", ["href", "https://foundational.bio"], "FoundationalBio"],
+				", building the future of science.",
 			]],
 		]],
 		["p", ["class", "journal-footnote"], [
