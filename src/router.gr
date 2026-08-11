@@ -121,16 +121,21 @@ fn get_routes(include_feed) {
         }
     }
 
-    # Build index using posts dicts
+    # Plain static homepage (see static/index.html)
     routes["/"] = {
+        "class": "static",
+        "content": io.readFile("static/index.html"),
+    }
+
+    routes["/archive/index.html"] = {
         "class": "html",
-        "content": import("pages/index.gr").build_index(posts),
+        "content": import("pages/archive.gr").build_archive(posts),
         "metadata": {
-            "title": "Miguel Liezun - Programming, Side Projects & Systems",
+            "title": "Archive | mliezun.com",
             "author": "Miguel Liezun",
-            "tags": "software,tech,fun",
+            "tags": "software,tech,blog",
             "date": "",
-            "excerpt": "Personal blog by Miguel Liezun on programming, side projects, Rust, Python, and Django. Built with Grotsky, a toy language written in Rust.",
+            "excerpt": "Archived blog posts by Miguel Liezun on programming, side projects, Rust, Python, and Django.",
             "image": defaultImage,
             "content_type": "website",
             "needs_highlight": false,
@@ -146,7 +151,7 @@ fn get_routes(include_feed) {
             "author": "Miguel Liezun",
             "tags": "software,tech,fun",
             "date": "2024-07-17",
-            "excerpt": "Now page for my personal blog.",
+            "excerpt": "What Miguel Liezun is focused on right now.",
             "image": defaultImage,
             "content_type": nil,
             "needs_highlight": false,
