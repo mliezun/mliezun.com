@@ -40,7 +40,7 @@ fn build_archive_entry(postDict, featured) {
     ]]
 }
 
-fn build_index(posts) {
+fn build_archive(posts) {
     let sorted = u.sortBy(posts, fn (a, b) strings.compare(b["date"], a["date"]))
     let latestUrl = ""
     if sorted.length > 0 {
@@ -52,20 +52,26 @@ fn build_index(posts) {
     years_list = u.sortBy(years_list, fn (a, b) strings.compare(b, a))
 
     return [
-        ["div", ["class", "post-archive"],
-            u.foldl(u.map(years_list, fn (year) {
-                return [
-                    ["section", ["id", "year-" + year, "class", "archive-year-section"], [
-                        ["p", ["class", "archive-year-label"], year],
-                        ["div", ["class", "archive-year-posts"],
-                            u.foldl(u.map(years[year], fn (postDict) {
-                                let featured = postDict["url"] == latestUrl
-                                return build_archive_entry(postDict, featured)
-                            }), [], u.sum)
-                        ]
-                    ]]
-                ]
-            }), [], u.sum)
-        ]
+        ["div", ["class", "archive-page"], [
+            ["p", ["class", "archive-intro"], [
+                "This blog is archived. Older posts remain available here. ",
+                "New writing will live elsewhere."
+            ]],
+            ["div", ["class", "post-archive"],
+                u.foldl(u.map(years_list, fn (year) {
+                    return [
+                        ["section", ["id", "year-" + year, "class", "archive-year-section"], [
+                            ["p", ["class", "archive-year-label"], year],
+                            ["div", ["class", "archive-year-posts"],
+                                u.foldl(u.map(years[year], fn (postDict) {
+                                    let featured = postDict["url"] == latestUrl
+                                    return build_archive_entry(postDict, featured)
+                                }), [], u.sum)
+                            ]
+                        ]]
+                    ]
+                }), [], u.sum)
+            ],
+        ]],
     ]
 }

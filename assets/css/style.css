@@ -357,6 +357,18 @@ article a {
 
 /* ── Archive index ─────────────────────────────────────────── */
 
+.archive-page {
+    margin-top: 0;
+}
+
+.archive-intro {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    line-height: 1.68;
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-4);
+}
+
 .post-archive {
     margin-top: 0;
 }

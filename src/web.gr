@@ -173,6 +173,7 @@ class Web {
 
     masthead(url) {
         let isHome = url == "/"
+        let isArchive = url == "/archive/index.html"
         let isNow = url == "/now/index.html"
 
         return ["header", ["class", "journal-masthead"], [
@@ -182,15 +183,14 @@ class Web {
                     ["div", ["class", "masthead-nav-row"], [
                         ["nav", ["class", "masthead-nav", "aria-label", "Site"], [
                             ["a", ["href", "/", "class", this.navLinkClass(isHome)], "Home"],
+                            ["a", ["href", "/archive/index.html", "class", this.navLinkClass(isArchive)], "Archive"],
                             ["a", ["href", "/now/index.html", "class", this.navLinkClass(isNow)], "Now"],
-                            ["a", ["href", "/feed.xml", "class", "masthead-nav-link"], "Feed"],
                         ]],
                         ["button", ["class", "theme-toggle", "id", "theme-toggle", "title", "Toggle theme"], [
                             ["img", ["src", "/assets/images/circle-half.svg", "alt", "Toggle theme"], []],
                         ]],
                     ]],
                 ]],
-                ["p", ["class", "masthead-tagline"], "Programming & side projects"],
             ]],
         ]]
     }

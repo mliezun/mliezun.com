@@ -3,7 +3,7 @@ let u = import("../utils.gr")
 
 fn now_body() {
 	return [
-		["p", ["class", "journal-updated"], "Last updated on 2026-07-15."],
+		["p", ["class", "journal-updated"], "Last updated on 2026-08-11."],
 		["ul", ["class", "journal-list"], [
 			["li", [], [
 				"Working on ",
@@ -23,6 +23,11 @@ fn now_body() {
 				["a", ["href", "https://foundational.bio"], "FoundationalBio"],
 				", building the future of science.",
 			]],
+			["li", [], [
+				"I host the ",
+				["a", ["href", "https://luma.com/70viy4qv", "target", "_blank", "rel", "noopener noreferrer"], "Physical AI Meetup"],
+				".",
+			]],
 		]],
 		["p", ["class", "journal-footnote"], [
 			"More about the ",
@@ -36,7 +41,7 @@ fn build_now() {
     return [
         ["div", ["class", "journal-section"], [
             ["p", ["class", "journal-intro"], [
-                "I'm Miguel Liezun. I write about programming, side projects, and the systems behind them. ",
+                "I'm Miguel Liezun. I build systems and side projects. ",
                 "I've built ",
                 ["a", ["href", "https://mliezun.com/2023/11/23/grotsky-rust-part3.html"], "Grotsky"],
                 ", a toy language implemented in Rust. This site is generated with Grotsky as static HTML.",
