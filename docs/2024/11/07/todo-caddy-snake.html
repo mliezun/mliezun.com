@@ -1,0 +1,49 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Caddy Snake improvements</title><meta name="generator" content="Custom"/><meta property="og:title" content="Caddy Snake improvements"/><meta property="og:locale" content="en_US"/><meta name="description" content="I've been planning on improving Caddy Snake, making it more stable and easier to use. Right now, I want to add automatic tests for Django, and build binaries and Docker images for arm64 and riscv64. I'd also like to turn it into a Python package so you can plug it straight into your code."/><meta property="og:description" content="I've been planning on improving Caddy Snake, making it more stable and easier to use. Right now, I want to add automatic tests for Django, and build binaries and Docker images for arm64 and riscv64. I'd also like to turn it into a Python package so you can plug it straight into your code."/><meta name="keywords" content="programming,python,code,algorithms"/><link rel="canonical" href="https://mliezun.com/2024/11/07/todo-caddy-snake.html"/><meta property="og:url" content="https://mliezun.com/2024/11/07/todo-caddy-snake.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Caddy Snake improvements"/><meta name="twitter:description" content="I've been planning on improving Caddy Snake, making it more stable and easier to use. Right now, I want to add automatic tests for Django, and build binaries and Docker images for arm64 and riscv64. I'd also like to turn it into a Python package so you can plug it straight into your code."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"I've been planning on improving Caddy Snake, making it more stable and easier to use. Right now, I want to add automatic tests for Django, and build binaries and Docker images for arm64 and riscv64. I'd also like to turn it into a Python package so you can plug it straight into your code.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2024/11/07/todo-caddy-snake.html","headline":"Caddy Snake improvements","dateModified":"2024-11-07T00:00:00-03:00","datePublished":"2024-11-07T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2024/11/07/todo-caddy-snake.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Caddy Snake improvements
+</h1><p class="article-byline"><span class="byline-date">2024-11-07</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">programming,python,code,algorithms</span></p><p>
+</p><p>I've been planning on improving Caddy Snake, making it more stable and easier to use. Right now, I want to add automatic tests for Django, and build binaries and Docker images for arm64 and riscv64. I'd also like to turn it into a Python package so you can plug it straight into your code.
+</p><h2>Fix/add/test support for Django
+</h2><p>
+</p><p>I've tried to use it a couple times just to test that it works and seems to have been broken. I'd like to test it a little bit more to make sure it works and solve all the bugs.
+</p><p>Also add automatic tests so that I'm sure it doesn't break after I make some changes.
+</p><h2>Make sure we don't get segfaults on tests anymore
+</h2><p>
+</p><p>Sometimes I get random segfaults when tests run on CI. I'd like to take time to investigate this and fix the issues.
+</p><h2>Add support for arm64 and riscv64
+</h2><p>
+</p><p>For now I'm only building caddy-snake for Linux x86_64. It would be cool to distribute more binaries for different OSes and CPU architectures.
+</p><p>For example:
+</p><ul><li>linux / x86_64 / arm64 / riscv64
+</li></ul><ul><li>macOS / x86_64 / arm64
+</li></ul><ul><li>windows / x86_64 / arm64
+</li></ul><p>Also deliver docker images for all of those.
+</p><p>
+</p><h2>Expose as python package that can be used directly
+</h2><p>
+</p><pre class="triple-quote python">import caddysnake
+
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/hello")
+def hello():
+ return "Hello world"
+ 
+if __name__ == "__main__":
+    caddysnake.run(app=app, host="localhost:8082")
+</pre><p>
+</p><h2>Better performance and isolation
+</h2><p>
+</p><p>Complete the work of integrating subinterpreters in caddy-snake.
+</p><p><a target='_blank' href='https://github.com/mliezun/caddy-snake/pull/9'>https://github.com/mliezun/caddy-snake/pull/9</a>
+</p><p>Track performance compared to other web servers and improve it.
+</p><p>
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

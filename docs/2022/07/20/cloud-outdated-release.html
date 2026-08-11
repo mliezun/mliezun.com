@@ -1,0 +1,100 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Webscraping as a side project</title><meta name="generator" content="Custom"/><meta property="og:title" content="Webscraping as a side project"/><meta property="og:locale" content="en_US"/><meta name="description" content="Cloud Outdated is a personalized digest of updates for cloud services. Works like a newsletter where you can choose
+	which services you want to get notified about. For example: Subscribe to AWS Lambda with Python runtime, and you'll get an email
+	when 3.10 is supported."/><meta property="og:description" content="Cloud Outdated is a personalized digest of updates for cloud services. Works like a newsletter where you can choose
+	which services you want to get notified about. For example: Subscribe to AWS Lambda with Python runtime, and you'll get an email
+	when 3.10 is supported."/><meta name="keywords" content="python,webscraping,project,aws"/><link rel="canonical" href="https://mliezun.com/2022/07/20/cloud-outdated-release.html"/><meta property="og:url" content="https://mliezun.com/2022/07/20/cloud-outdated-release.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Webscraping as a side project"/><meta name="twitter:description" content="Cloud Outdated is a personalized digest of updates for cloud services. Works like a newsletter where you can choose
+	which services you want to get notified about. For example: Subscribe to AWS Lambda with Python runtime, and you'll get an email
+	when 3.10 is supported."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Cloud Outdated is a personalized digest of updates for cloud services. Works like a newsletter where you can choose
+	which services you want to get notified about. For example: Subscribe to AWS Lambda with Python runtime, and you'll get an email
+	when 3.10 is supported.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2022/07/20/cloud-outdated-release.html","headline":"Webscraping as a side project","dateModified":"2022-07-20T00:00:00-03:00","datePublished":"2022-07-20T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2022/07/20/cloud-outdated-release.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>Webscraping as a side project</h2><p class="article-byline"><span class="byline-date">2022-07-20</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">python,webscraping,project,aws</span></p><p>A friend and I were looking for a side project to work together. We realized we both faced a similar problem.
+</p><p>Let's use AWS Lambda Python runtime as an example.
+AWS will send out emails when a version is at the end of life making it difficult to stay 
+on the latest if desired.
+Plus, reacting to them usually means you are many many versions behind already.
+</p><p>Our journey started.
+We made a list of providers for the MVP: AWS, GCP and Azure.
+Then a list of the services that have versions (for example S3 doesn't have versions).
+After that we realized that we could get some versions using APIs.
+Other services exclusively require webscraping.
+</p><p>We support 46 services and counting.
+Take a look at
+<a href="https://cloud-outdated.com/services/" target="_blank">Cloud Outdated</a> and subscribe to get notified.
+If you are looking for a service that's not there
+<a href="https://gs2azalhg3t.typeform.com/to/Q6oHtttI" target="_blank">contact us</a>.
+</p><h2>Picking a language, framework and platform</h2><p>We're both Python programmers. The choice was obvious.
+"Let's use Python and Django framework for the job" we said.
+We didn't want to spend our innovation tokens on new language/framework.
+So we chose Boring Technology.
+</p><p>For the db we spent our first innovation token.
+We decided to go with the flashy new serverless postgres-compatible
+<a href="https://www.cockroachlabs.com/lp/serverless/" target="_blank">CockroachDB</a>.
+</p><p>On the hosting side we're using AWS Lambda. Taking advantage of the free compute time.
+Helps maintaining the costs down.
+</p><h2>Make webscraping reliable</h2><p>A webpage that's being scraped can change at any time. First thing we did was account for those edge cases.
+We created a custom exception that is triggered when something changed. So that we can react to that downstream.
+<pre class="triple-quote python">
+class ScrapingError(Exception):
+    pass
+
+</pre>We wanted to keep the implementation simple. Each service is scraped by a single function.
+The signature of the function is something like
+<span class="single-quote python">aws_lambda_python() -> List[Version]</span>.
+All the implementations follow a similar pattern:
+<pre class="triple-quote python">
+def aws_lambda_python():
+    # Read versions from aws docs website:
+    # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+
+    if not found_versions:
+        raise ScrappingError
+
+    # Process and return versions
+
+</pre>That's ^ what we call a poll function.
+</p><p>We pass poll functions through a polling class that handles all the errors and results.
+When we detect a scraping error we have a special case. We send an email with the details
+of what happened. Because the problem is something that requires manual action. We receive
+that email in our personal inboxes and fix the problem ASAP.
+</p><p>The poll class that handles all the magic behind cloud outdated is actually very simple:
+<pre class="triple-quote python">
+class PollService:
+    def __init__(self, service: Service, poll_fn: Callable):
+        self.poll_fn = poll_fn
+        # Some other attributes...
+
+    def poll(self):
+        try:
+            results = self.poll_fn()
+            self.process_results(results)
+        except ScrapingError as e:
+            notify_operator(
+                f"{type(e).__name__} at line {e.__traceback__.tb_lineno} of {__file__}: {e.__str__()}"
+            )
+
+    def process_results(self, results):
+        # if results contains new versions:
+        #     save new versions to db
+        # if results contains deprecated versions:
+        #     set versions in db as depreacted
+
+</pre></p><p>That's the heart of Cloud Outdated.
+After that we have to send notifications to subscribed users.
+That part is trivial.
+We send an email that contains the difference between what was last sent to a user and what we
+have stored in the db at the moment.
+</p><h2>Last thoughts</h2><p>Having a side project is usually a good idea.
+For us it has been a journey where we got to know some new stuff (CockroachDB).
+We also learned about how to build a product and keep a MVP mentality.
+The most difficult challenge we face is to bring more users to the platform.
+</p><p>We'd love to see more people subscribed.
+If this blogpost sparked your interest go to
+<a href="https://cloud-outdated.com/services/" target="_blank">Cloud Outdated</a> and subscribe to start getting emails.
+</p><p>See you next time!
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

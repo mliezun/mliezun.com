@@ -1,0 +1,162 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Vercel-like development setup for Django using Caddy</title><meta name="generator" content="Custom"/><meta property="og:title" content="Vercel-like development setup for Django using Caddy"/><meta property="og:locale" content="en_US"/><meta name="description" content="Get {branch}.dev.yourdomain.com previews for Django (or any WSGI app) with a single VM, Caddy, and rsync—no Kubernetes required."/><meta property="og:description" content="Get {branch}.dev.yourdomain.com previews for Django (or any WSGI app) with a single VM, Caddy, and rsync—no Kubernetes required."/><meta name="keywords" content="django,deployment,caddy,ci-cd"/><link rel="canonical" href="https://mliezun.com/2026/02/11/vercel-like-domain-django.html"/><meta property="og:url" content="https://mliezun.com/2026/02/11/vercel-like-domain-django.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/vercel-deployment-caddy.png"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Vercel-like development setup for Django using Caddy"/><meta name="twitter:description" content="Get {branch}.dev.yourdomain.com previews for Django (or any WSGI app) with a single VM, Caddy, and rsync—no Kubernetes required."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/vercel-deployment-caddy.png"/>
+<script type="application/ld+json">{"description":"Get {branch}.dev.yourdomain.com previews for Django (or any WSGI app) with a single VM, Caddy, and rsync—no Kubernetes required.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2026/02/11/vercel-like-domain-django.html","headline":"Vercel-like development setup for Django using Caddy","dateModified":"2026-02-11T00:00:00-03:00","datePublished":"2026-02-11T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2026/02/11/vercel-like-domain-django.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta ai-assisted">AI-assisted
+<span class="ai-tag-popover">An AI tool was used to generate a part or all content of this post
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Vercel-like development setup for Django using Caddy
+</h1><p class="article-byline"><span class="byline-date">2026-02-11</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">django,deployment,caddy,ci-cd</span></p><p>
+</p><p><img alt='' src='/assets/images/vercel-deployment-caddy.png'/>
+</p><p>Vercel provides sites like <span class='single-quote'>{branch}.vercel.app</span> that show a preview of your changes and it usually builds really fast, which makes it a seamless experience.
+</p><p>This post gets you the same for Django (or any ASGI/WSGI app) on a single VM with Caddy, Python and rsync.
+</p><p>On each push, package the commit as a <span class='single-quote'>.tar.gz</span> and rsync it to <span class='single-quote'>/workspace/branches/{branchName}</span>.
+</p><p>The VM runs <a target='_blank' href='https://caddyserver.com/'>Caddy</a> with <a target='_blank' href='https://github.com/mliezun/caddy-snake'>caddy-snake</a>. Which means you get automatic HTTPS, support for Websockets and fast static files serving.
+</p><p>Your production app runs on <span class='single-quote'>yourdomain.com</span>.
+</p><p>Branches get a subdomain like <span class='single-quote'>feature-x.dev.yourdomain.com</span>.
+</p><h2>Overview
+</h2><p>
+</p><div class="mermaid">graph LR
+    subgraph repo["Code Repository"]
+        main[main]
+        featureA[featureA]
+        featureB[featureB]
+    end
+
+    subgraph cicd["CI/CD Pipeline"]
+        pipeline[Build & Deploy]
+    end
+
+    subgraph vm["Single VM Server"]
+        direction TB
+        maindir["📁 /workspace/branches/main/"]
+        fadir["📁 /workspace/branches/featureA/"]
+        fbdir["📁 /workspace/branches/featureB/"]
+        caddy["Caddy Server"]
+        
+        maindir --> caddy
+        fadir --> caddy
+        fbdir --> caddy
+    end
+
+    subgraph dns["DNS Records"]
+        direction TB
+        dns1["yourdomain.com<br/>A → serverIP"]
+        dns2["*.dev.yourdomain.com<br/>A → serverIP"]
+    end
+
+    subgraph domains["Public Access"]
+        d1["yourdomain.com"]
+        d2["featureA.dev.yourdomain.com"]
+        d3["featureB.dev.yourdomain.com"]
+    end
+
+    main --> pipeline
+    featureA --> pipeline
+    featureB --> pipeline
+    
+    pipeline --> maindir
+    pipeline --> fadir
+    pipeline --> fbdir
+    
+    dns1 -.-> vm
+    dns2 -.-> vm
+    
+    caddy --> d1
+    caddy --> d2
+    caddy --> d3
+
+    style repo fill:#e1f5ff,stroke:#0066cc
+    style cicd fill:#fff4e1,stroke:#ff9800
+    style vm fill:#f3e5f5,stroke:#9c27b0
+    style dns fill:#ffe0e0,stroke:#d32f2f
+    style domains fill:#e8f5e9,stroke:#4caf50
+    style caddy fill:#c5cae9,stroke:#3f51b5
+</div><p>
+</p><ul><li><strong>CI/CD</strong>: On each push, build a <span class='single-quote'>.tar.gz</span> and rsync to <span class='single-quote'>/workspace/branches/$BRANCH/</span>.
+</li><li><strong>VM</strong>: Caddy + caddy-snake. Production at <span class='single-quote'>yourdomain.com</span>, previews at <span class='single-quote'>*.dev.yourdomain.com</span>.
+</li><li><strong>DNS</strong>: A records for <span class='single-quote'>yourdomain.com</span> and <span class='single-quote'>*.dev.yourdomain.com</span> → VM IP.
+</li><li><strong>Caddy</strong>: Single configuration file and automatic HTTPS.
+</li></ul><h2>1. Deploy pattern: tar.gz + rsync
+</h2><p>
+</p><p>On every push (e.g. in GitHub Actions or GitLab CI), do something like:
+</p><pre class="triple-quote bash"># Example: in CI, after checkout
+BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+tar -czf app.tar.gz \
+  --exclude='.git' \
+  --exclude='__pycache__' \
+  --exclude='.venv' \
+  .
+rsync -avz --delete app.tar.gz \
+  deploy@YOUR_VM_IP:/workspace/branches/"$BRANCH_NAME"/
+ssh deploy@YOUR_VM_IP "cd /workspace/branches/$BRANCH_NAME \
+  && tar -xzf app.tar.gz \
+  && rm app.tar.gz \
+  && uv sync \
+  && uv run manage.py migrate \
+  && uv run manage.py collectstatic --noinput"
+</pre><p>
+</p><p>Sanitize branch names in CI if needed (e.g. replace <span class='single-quote'>/</span> with <span class='single-quote'>-</span>) so the path and subdomain match.
+</p><p>The server can create the venv per branch with <span class='single-quote'>uv sync</span> (as in the example) or you can ship a pre-built <span class='single-quote'>.venv</span>.
+</p><h2>2. Caddy + caddy-snake
+</h2><p>
+</p><p>Install Caddy with the <a target='_blank' href='https://github.com/mliezun/caddy-snake'>caddy-snake</a> plugin (see repo for build steps; <a target='_blank' href='https://github.com/mliezun/caddy-snake/releases'>releases</a> often include a binary).
+</p><h3>Example Caddyfile
+</h3><p>
+</p><ul><li><strong>Production</strong>: <span class='single-quote'>yourdomain.com</span> → fixed <span class='single-quote'>working_dir</span> for <span class='single-quote'>main</span>.
+</li><li><strong>Previews</strong>: <span class='single-quote'>*.dev.yourdomain.com</span> → <span class='single-quote'>working_dir</span> uses the placeholder; <span class='single-quote'>autoreload</span> so the next request after a push serves the new code.
+</li></ul><pre class="triple-quote Caddyfile">yourdomain.com {
+  handle_path /static/* {
+    root * /workspace/branches/main/staticfiles
+    file_server
+  }
+  route {
+    python {
+      module_wsgi app:wsgi.application
+      working_dir /workspace/branches/main/
+      venv .venv
+    }
+  }
+}
+
+*.dev.yourdomain.com {
+  handle_path /static/* {
+    root * /workspace/branches/{http.request.host.labels.3}/staticfiles
+    file_server
+  }
+  route {
+    python {
+      module_wsgi app:wsgi.application
+      working_dir /workspace/branches/{http.request.host.labels.3}/
+      venv .venv
+      workers_runtime thread
+      autoreload
+    }
+  }
+}
+</pre><p>
+</p><p>Notes:
+</p><ul><li><span class='single-quote'>workers_runtime thread</span> is required with placeholders and <span class='single-quote'>autoreload</span>.
+</li><li>Use your Django WSGI path (e.g. <span class='single-quote'>mysite.wsgi:application</span>) instead of <span class='single-quote'>app:wsgi.application</span>.
+</li><li>The branch directory must exist before the first request (CI creates it). Caddy-snake loads and caches the app on first request; <span class='single-quote'>autoreload</span> watches for <span class='single-quote'>.py</span> changes after each deploy.
+</li><li>Set Django’s <span class='single-quote'>STATIC_ROOT</span> to <span class='single-quote'>staticfiles</span> so <span class='single-quote'>collectstatic</span> matches the <span class='single-quote'>staticfiles/</span> paths in the Caddyfile.
+</li></ul><h3>Subdomain → branch name
+</h3><p>
+</p><p>Caddy splits the host into labels, <strong>right to left</strong>: for <span class='single-quote'>featureA.dev.yourdomain.com</span>, <span class='single-quote'>labels.0</span> = <span class='single-quote'>com</span>, <span class='single-quote'>labels.1</span> = <span class='single-quote'>yourdomain</span>, <span class='single-quote'>labels.2</span> = <span class='single-quote'>dev</span>, <span class='single-quote'>labels.3</span> = <span class='single-quote'>featureA</span>. So the branch is <span class='single-quote'>{http.request.host.labels.3}</span> for <span class='single-quote'>*.dev.yourdomain.com</span>.
+</p><p>Adjust the index if your dev domain has a different structure.
+</p><h2>3. DNS configuration
+</h2><p>
+</p><p>Add an "A record" for <span class='single-quote'>@.dev.yourdomain.com</span> (use wildcard depending on your DNS provider) pointing to the VM’s IP.
+</p><p>After propagation, Caddy can obtain a cert for <span class='single-quote'>*.dev.yourdomain.com</span> via ACME and route each subdomain to the matching branch directory.
+</p><p>
+</p><h2>4. What happens at runtime
+</h2><p>
+</p><ul><li><strong>First request</strong> to <span class='single-quote'>feature-x.dev.yourdomain.com</span>: Caddy resolves the placeholder to <span class='single-quote'>/workspace/branches/feature-x/</span>; caddy-snake loads and caches the app. If that directory doesn’t exist yet (branch not deployed), the request fails until CI has run.
+</li><li><strong>After a push</strong>: CI overwrites the branch directory; the next request triggers <span class='single-quote'>autoreload</span> and serves the new code.
+</li><li><strong>New branch</strong>: Push → CI creates the directory → first request to <span class='single-quote'>new-branch.dev.yourdomain.com</span> loads it.
+</li></ul><p>Push a branch, wait for CI, then open <span class='single-quote'>{branch}.dev.yourdomain.com</span>.
+</p><h2>Bonus: clean up on merge
+</h2><p>
+</p><p>When a branch is merged and deleted, trigger a pipeline step that removes its directory on the VM (e.g. <span class='single-quote'>ssh deploy@VM "rm -rf /workspace/branches/$BRANCH_NAME"</span>). Caddy-snake sees the directory is gone and stops serving that app; the next request to <span class='single-quote'>{branch}.dev.yourdomain.com</span> fails until a new branch with that name is deployed. That keeps preview URLs only for active branches and frees disk space.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script><script defer="" src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script><script defer="" src="/assets/js/mermaid-init.js"></script></body></html>

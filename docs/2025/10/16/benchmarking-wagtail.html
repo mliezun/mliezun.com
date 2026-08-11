@@ -1,0 +1,105 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Benchmarking Wagtail CMS Across Python Versions</title><meta name="generator" content="Custom"/><meta property="og:title" content="Benchmarking Wagtail CMS Across Python Versions"/><meta property="og:locale" content="en_US"/><meta name="description" content="I spent some time benchmarking Wagtail CMS across different Python versions to see how performance varies. The results are pretty interesting - Python 3.11 comes out on top with some solid improvements over 3.10."/><meta property="og:description" content="I spent some time benchmarking Wagtail CMS across different Python versions to see how performance varies. The results are pretty interesting - Python 3.11 comes out on top with some solid improvements over 3.10."/><meta name="keywords" content="python,benchmarking,performance,wagtail,cms"/><link rel="canonical" href="https://mliezun.com/2025/10/16/benchmarking-wagtail.html"/><meta property="og:url" content="https://mliezun.com/2025/10/16/benchmarking-wagtail.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/wagtail-benchmark/rps_comparison.png"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Benchmarking Wagtail CMS Across Python Versions"/><meta name="twitter:description" content="I spent some time benchmarking Wagtail CMS across different Python versions to see how performance varies. The results are pretty interesting - Python 3.11 comes out on top with some solid improvements over 3.10."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/wagtail-benchmark/rps_comparison.png"/>
+<script type="application/ld+json">{"description":"I spent some time benchmarking Wagtail CMS across different Python versions to see how performance varies. The results are pretty interesting - Python 3.11 comes out on top with some solid improvements over 3.10.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2025/10/16/benchmarking-wagtail.html","headline":"Benchmarking Wagtail CMS Across Python Versions","dateModified":"2025-10-16T00:00:00-03:00","datePublished":"2025-10-16T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2025/10/16/benchmarking-wagtail.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta ai-assisted">AI-assisted
+<span class="ai-tag-popover">An AI tool was used to generate a part or all content of this post
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Benchmarking Wagtail CMS Across Python Versions
+</h1><p class="article-byline"><span class="byline-date">2025-10-16</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">python,benchmarking,performance,wagtail,cms</span></p><p>
+</p><p><strong>Testing real-world performance across 8 different Python versions</strong>
+</p><p><em>Published: October 16, 2025</em>
+</p><p><img alt='' src='/assets/images/wagtail-benchmark/python_versions.png'/>
+</p><h2>Introduction
+</h2><p>
+</p><p>I've been curious about how different Python versions perform in real-world web applications. Python keeps getting faster with each release, but I wanted to see how much of a difference it actually makes when running a real application under load.
+</p><p>So I decided to benchmark <strong>Wagtail CMS</strong>, a Django-based content management system, tested across 8 different Python versions. This is the first in what I hope will be a series of benchmarks testing different Python web applications.
+</p><p>Here's what I tested:
+</p><ul><li><strong>Python 3.10</strong> (our baseline)
+</li><li><strong>Python 3.11</strong> 
+</li><li><strong>Python 3.12</strong>
+</li><li><strong>Python 3.13</strong>
+</li><li><strong>Python 3.13t</strong> (free-threaded, GIL disabled)
+</li><li><strong>Python 3.14</strong>
+</li><li><strong>Python 3.14-tailcall</strong> (experimental tailcall optimization)
+</li><li><strong>Python 3.14t</strong> (free-threaded, GIL disabled)
+</li></ul><p>The results were pretty interesting! You can check out the full benchmark setup and results at <a target='_blank' href='https://github.com/mliezun/python-web-benchmarks'>https://github.com/mliezun/python-web-benchmarks</a>.
+</p><h2>How I Set Up the Tests
+</h2><p>
+</p><h3>The Setup
+</h3><p>
+</p><p>I wanted to keep things realistic, so I used:
+</p><ul><li><strong>Wagtail CMS 6.3</strong> with Django 5.1.4 (a real production setup)
+</li><li><strong>Gunicorn 21.2.0</strong> as the WSGI server
+</li><li><strong>SQLite</strong> with actual content (15+ blog posts, multiple pages)
+</li><li><strong>Apache Bench (ab)</strong> for load testing
+</li><li><strong>Docker</strong> to keep everything isolated and reproducible
+</li></ul><p>For the experimental Python versions, I used custom Docker images:
+</p><ul><li><span class='single-quote'>ghcr.io/mliezun/python-web-benchmarks/python-freethreaded:3.14t-slim</span>
+</li><li><span class='single-quote'>ghcr.io/mliezun/python-web-benchmarks/python-freethreaded:3.13t-slim</span>  
+</li><li><span class='single-quote'>ghcr.io/mliezun/python-web-benchmarks/python-freethreaded:3.14-tailcall-slim</span>
+</li></ul><h3>Test Scenarios
+</h3><p>I ran three scenarios that you'd actually encounter in real usage:
+</p><p>1. <strong>Homepage Load</strong>: Full page with navigation, sections, and dynamic content
+</p><p>2. <strong>Admin Login</strong>: Authentication and admin interface access
+</p><p>3. <strong>Blog Browsing</strong>: Listing and viewing blog posts
+</p><p>Each scenario was tested with <strong>1, 5, 10, and 20 concurrent users</strong> to see how things scale.
+</p><h3>What I Measured
+</h3><ul><li><strong>Requests per Second (RPS)</strong>: How many requests we can handle
+</li><li><strong>Response Time</strong>: Average, p50, p95, and p99 percentiles
+</li><li><strong>CPU Usage</strong>: How hard the server was working
+</li><li><strong>Memory Usage</strong>: RAM consumption during tests
+</li></ul><h2>The Results
+</h2><p>
+</p><h3>Overall Throughput Performance
+</h3><p>
+</p><p><img alt='' src='/assets/images/wagtail-benchmark/rps_comparison.png'/>
+</p><p>Here's how many requests per second each Python version can handle. Higher is better, obviously.
+</p><h3>Response Time Analysis
+</h3><p>
+</p><p><img alt='' src='/assets/images/wagtail-benchmark/response_time_comparison.png'/>
+</p><p>This shows how response times change as we add more concurrent users. Lower is better here.
+</p><h3>Relative Performance Improvements
+</h3><p>
+</p><p><img alt='' src='/assets/images/wagtail-benchmark/performance_gains.png'/>
+</p><p>This is probably the most interesting chart - it shows how much faster each version is compared to Python 3.10 (our baseline). Positive numbers mean it's faster.
+</p><h3>Resource Utilization
+</h3><p>
+</p><p><img alt='' src='/assets/images/wagtail-benchmark/resource_usage.png'/>
+</p><p>CPU and memory usage is important for capacity planning. You want good performance without burning through resources.
+</p><h2>What I Found
+</h2><p>
+</p><h3>🏆 Python 3.11 is the Winner
+</h3><p>
+</p><p><strong>Python 3.11 came out on top</strong> with about 3.2% better performance than Python 3.10 on average. That might not sound like much, but when you're handling thousands of requests per day, it adds up.
+</p><h3>The Big Picture
+</h3><p>
+</p><p>1. <strong>Experimental versions are interesting</strong>: Python 3.14t (free-threaded) shows some promising results for concurrent workloads, but I'd be careful about using it in production just yet.
+</p><p>2. <strong>All versions scale well</strong>: Every version handled 20 concurrent users without breaking a sweat. The newer versions just do it slightly better.
+</p><p>3. <strong>Memory usage is consistent</strong>: All versions used roughly the same amount of RAM (~300-360 MB), so upgrading won't cost you more in memory.
+</p><p>4. <strong>Everything was stable</strong>: Zero errors across all tests. All versions are production-ready.
+</p><h2>My Recommendations
+</h2><p>
+</p><h3>For Production
+</h3><p>
+</p><p><strong>Go with Python 3.11</strong> if you want the best performance. It's stable, fast, and has been around long enough that most packages support it well.
+</p><p><strong>Python 3.12</strong> is also a solid choice if you want something newer but still conservative.
+</p><p>I'd hold off on the experimental versions (3.14t, 3.14-tailcall) for production use until they're more mature.
+</p><h3>If You're Upgrading
+</h3><p>
+</p><p>If you're currently on Python 3.10 or earlier, here's what I'd suggest:
+</p><p><strong>Important note</strong>: Python 3.10 reaches end-of-life on <em></em>October 31, 2026** according to the <a target='_blank' href='https://devguide.python.org/versions/'>Python Developer's Guide</a>. After that date, it will only receive security fixes, so you'll want to plan your upgrade well before then.
+</p><p>1. <strong>Test everything</strong>: Run your full test suite on the target version first
+</p><p>2. <strong>Check your dependencies</strong>: Make sure all your packages support the new version
+</p><p>3. <strong>Benchmark your specific app</strong>: My results are for Wagtail - your mileage may vary
+</p><p>4. <strong>Deploy carefully</strong>: Use canary deployments or blue-green strategies
+</p><p>The good news is that memory usage is pretty consistent across versions, so you won't need to resize your servers.
+</p><h2>Wrapping Up
+</h2><p>
+</p><p>So what did I learn from all this testing?
+</p><p><strong>Python version upgrades are worth it.</strong> You get measurable performance improvements without needing more resources. Python 3.11 is the sweet spot right now - fast, stable, and well-supported.
+</p><p>The experimental versions are definitely interesting to watch. The free-threaded versions (3.13t, 3.14t) could be a game-changer for certain workloads, but I'd wait until they're more mature before using them in production.
+</p><p>I'm planning to benchmark more Python web applications in the future - maybe Django REST Framework, FastAPI, or even some data processing workloads. If you have suggestions for what to test next, let me know!
+</p><p>You can find all the benchmark code, results, and setup instructions at <a target='_blank' href='https://github.com/mliezun/python-web-benchmarks'>https://github.com/mliezun/python-web-benchmarks</a>. Feel free to run your own tests or contribute to the project.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script></body></html>

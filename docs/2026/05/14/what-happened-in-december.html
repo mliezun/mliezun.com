@@ -1,0 +1,56 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>What happened in December 2025 or how I got a 40x speedup?</title><meta name="generator" content="Custom"/><meta property="og:title" content="What happened in December 2025 or how I got a 40x speedup?"/><meta property="og:locale" content="en_US"/><meta name="description" content="I'm quite late to the discussion, but everyone has been saying that they have not written code since December. What happened? The release of Gemini 3 Pro, GPT-5.1 and Claude Opus 4.5 was a game changer. It was the first time that models were 'smart enough' to accomplish complex tasks."/><meta property="og:description" content="I'm quite late to the discussion, but everyone has been saying that they have not written code since December. What happened? The release of Gemini 3 Pro, GPT-5.1 and Claude Opus 4.5 was a game changer. It was the first time that models were 'smart enough' to accomplish complex tasks."/><meta name="keywords" content="rust,ai,speedup"/><link rel="canonical" href="https://mliezun.com/2026/05/14/what-happened-in-december.html"/><meta property="og:url" content="https://mliezun.com/2026/05/14/what-happened-in-december.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/rust-and-gemini.png"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="What happened in December 2025 or how I got a 40x speedup?"/><meta name="twitter:description" content="I'm quite late to the discussion, but everyone has been saying that they have not written code since December. What happened? The release of Gemini 3 Pro, GPT-5.1 and Claude Opus 4.5 was a game changer. It was the first time that models were 'smart enough' to accomplish complex tasks."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/rust-and-gemini.png"/>
+<script type="application/ld+json">{"description":"I'm quite late to the discussion, but everyone has been saying that they have not written code since December. What happened? The release of Gemini 3 Pro, GPT-5.1 and Claude Opus 4.5 was a game changer. It was the first time that models were 'smart enough' to accomplish complex tasks.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2026/05/14/what-happened-in-december.html","headline":"What happened in December 2025 or how I got a 40x speedup?","dateModified":"2026-05-14T00:00:00-03:00","datePublished":"2026-05-14T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2026/05/14/what-happened-in-december.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>What happened in December 2025 or how I got a 40x speedup?
+</h1><p class="article-byline"><span class="byline-date">2026-05-14</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">rust,ai,speedup</span></p><p>
+</p><p><img alt='' src='/assets/images/rust-and-gemini.png'/>
+</p><p>I'm quite late to the discussion, but everyone has been saying that they have not written code since December.
+</p><h2>What happened?
+</h2><p>
+</p><p>In November 2025 the release of Gemini 3 Pro, GPT-5.1 and Claude Opus 4.5 was a game changer. It was the first time that models were "smart enough" to accomplish complex tasks.
+</p><p>Since around August 2024 I tried using Agentic coding (via Cursor) to improve the performance of <a target='_blank' href='https://github.com/mliezun/grotsky'>Grotsky</a>, a toy programming language whose interpreter is written in Rust.
+</p><p>I didn't get much improvements until November/December 2025.
+</p><p>In that period of 15 months I tried putting the following prompt through different models in several occasions.
+</p><pre class="triple-quote md">This project is called Grotsky a toy programming language whose interpreter is written in Rust.
+
+To compile test and run benchmarks do:
+<list-of-commands>
+
+I want to optimize performance, since the current interpreter is very slow.
+
+Setup a cpu profiler to analyze where the time is spent in the Rust code.
+
+Optimize the code based on the profiling result.
+
+Each time you modify the code compile, run tests and benchmarks to confirm the speedup.
+
+Keep iterating while there's still room for improvement.
+</pre><p>
+</p><p>As you can see it was a very high level prompt where I didn't give it any instructions or guidance about the underlying codebase or how to integrate the profiler itself.
+</p><p>Until November 2025 I would always hit a roadblock with this approach, where the model would not be able to figure out how to integrate the profiler or it would change the codebase in a way that broke all the tests and not be able to recover.
+</p><p>But between November 30th and December 1st, armed with Cursor and Gemini 3 Pro, I finally got it working:
+</p><p><a target='_blank' href='https://github.com/mliezun/grotsky/pull/9'>https://github.com/mliezun/grotsky/pull/9</a>
+</p><p>As you can see in the PR description:
+</p><pre class="triple-quote md">Integration Test:
+    Master total time: 145.849s (test output) / 140.96s (user cpu)
+    Optimized total time: 4.737s (test output) / 3.58s (user cpu)
+    Speedup (test time): 145.849 / 4.737 = 30.78x
+    **Speedup (user cpu): 140.96 / 3.58 = 39.37x**
+</pre><p>
+</p><p>That's basically a 40x speedup. "User cpu" means the time that the program is actually running.
+</p><p>
+</p><p>The program used for integration testing, is this blog's engine, which is indeed written in Grotsky. The program takes plain markdown files and turns them into HTML.
+</p><p>
+</p><p>This is a testament of how poorly I had written the interpreter. There was a lot of low hanging fruit to be optimized. But it was also the first time when I experienced how a powerful LLM with a tight agentic loop would actually compound and produce a virtuous result.
+</p><p>You could say that this was the point the LLMs surpassed human (me) abilities.
+</p><h2>What was the optimization?
+</h2><p>
+</p><p>Basically the codebase was infested with <span class='single-quote'>.clone()</span>, which was copying memory and generating delays each time it was called, the AI model was smart enough to figure out how to get rid of that while complying with Rust's borrow checker and passing all conformance tests.
+</p><p>---
+</p><p>This blogpost was rendered by that optimized code.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

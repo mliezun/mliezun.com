@@ -1,0 +1,151 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>I rewrote my toy language interpreter in Rust</title><meta name="generator" content="Custom"/><meta property="og:title" content="I rewrote my toy language interpreter in Rust"/><meta property="og:locale" content="en_US"/><meta name="description" content="I'm rewriting Grotsky (my toy programming language) in Rust, the previous implementation
+was done in Go. The goal of the rewrite is to improve my Rust skills, and to improve the performance of Grotsky,
+by at least 10x. This has been a series of posts, this one is the latest one. Hopefully the best and most insightful
+of them all."/><meta property="og:description" content="I'm rewriting Grotsky (my toy programming language) in Rust, the previous implementation
+was done in Go. The goal of the rewrite is to improve my Rust skills, and to improve the performance of Grotsky,
+by at least 10x. This has been a series of posts, this one is the latest one. Hopefully the best and most insightful
+of them all."/><meta name="keywords" content="rust,rewrite,programming,go,golang"/><link rel="canonical" href="https://mliezun.com/2023/11/23/grotsky-rust-part3.html"/><meta property="og:url" content="https://mliezun.com/2023/11/23/grotsky-rust-part3.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="I rewrote my toy language interpreter in Rust"/><meta name="twitter:description" content="I'm rewriting Grotsky (my toy programming language) in Rust, the previous implementation
+was done in Go. The goal of the rewrite is to improve my Rust skills, and to improve the performance of Grotsky,
+by at least 10x. This has been a series of posts, this one is the latest one. Hopefully the best and most insightful
+of them all."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"I'm rewriting Grotsky (my toy programming language) in Rust, the previous implementation
+was done in Go. The goal of the rewrite is to improve my Rust skills, and to improve the performance of Grotsky,
+by at least 10x. This has been a series of posts, this one is the latest one. Hopefully the best and most insightful
+of them all.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2023/11/23/grotsky-rust-part3.html","headline":"I rewrote my toy language interpreter in Rust","dateModified":"2023-11-23T00:00:00-03:00","datePublished":"2023-11-23T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2023/11/23/grotsky-rust-part3.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>I rewrote my toy language interpreter in Rust</h2><p class="article-byline"><span class="byline-date">2023-11-23</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">rust,rewrite,programming,go,golang</span></p><p>I'm rewriting Grotsky (my toy programming language) in Rust, the previous implementation
+was done in Go. The goal of the rewrite is to improve my Rust skills, and to improve the performance of Grotsky,
+by at least 10x. This has been a series of posts, this one is the latest one. Hopefully the best and most insightful
+of them all.</p><p>In previous posts:
+<ul><li><a href="https://mliezun.com/2023/06/02/rewrite-grotsky-rust.html">Rewrite my toy language interpreter in Rust
+</a></li></ul><ul><li><a href="https://mliezun.com/2023/09/23/grotsky-rust-part2.html">Rewrite my toy language interpreter in Rust, an update
+</a></li></ul> I've outlined a plan to migrate Grotsky to a Rust based platform.
+</p><p>
+			Originally, my plan was very ambitious and I thought I would be able to finish the transition
+			in like two months.
+			In reality it took five months :-)
+			
+</p><h3>Performance improvement</h3><p>I was aiming at a 10x improvement. In reality it is not that much.
+ I ran various benchmarks and got at most a 4x improvement.
+ Which is not great, but also not that bad given that I know very little
+ of how to do high performance Rust.
+ The interpreter is written in the dumbest and easiest way I managed to do it.
+</p><p>Let's look at some numbers for different programs.
+</p><h4>Loop program</h4><p><pre class="triple-quote js language-css">let start = io.clock()
+fn test() {
+    let a = 1
+    while a < 10000000 {
+        a = a + 1
+    }
+}
+test()
+io.println(io.clock() - start)
+</pre></p><p>The result is:
+<pre class="triple-quote js language-css">trial #1
+build/grotsky   best 5.135s  3.877x time of best
+build/grotsky-rs   best 1.325s  287.6800% faster
+trial #2
+build/grotsky   best 5.052s  3.814x time of best
+build/grotsky-rs   best 1.325s  281.4182% faster
+trial #3
+build/grotsky   best 5.035s  3.802x time of best
+build/grotsky-rs   best 1.325s  280.1663% faster
+trial #4
+build/grotsky   best 5.003s  3.777x time of best
+build/grotsky-rs   best 1.325s  277.6831% faster
+trial #5
+build/grotsky   best 5.003s  3.777x time of best
+build/grotsky-rs   best 1.325s  277.6831% faster
+</pre></p><h4>Recursive fibonacci</h4><p><pre class="triple-quote js language-css">let start = io.clock()
+fn fib(n) {
+	if n <= 2 {
+		return n
+	}
+	return fib(n-2) + fib(n-1)
+}
+fib(28)
+io.println(io.clock() - start)
+</pre></p><p>The result is:
+<pre class="triple-quote js language-css">trial #1
+build/grotsky   best 0.8409s  294.5155% faster
+build/grotsky-rs   best 3.317s  3.945x time of best
+trial #2
+build/grotsky   best 0.8168s  271.3829% faster
+build/grotsky-rs   best 3.033s  3.714x time of best
+trial #3
+build/grotsky   best 0.797s  245.6835% faster
+build/grotsky-rs   best 2.755s  3.457x time of best
+trial #4
+build/grotsky   best 0.7784s  249.9964% faster
+build/grotsky-rs   best 2.724s  3.5x time of best
+trial #5
+build/grotsky   best 0.7784s  249.9964% faster
+build/grotsky-rs   best 2.724s  3.5x time of best
+</pre></p><p>In this case is like 3.5x slower. This is due to function calls.
+ I'm not very well versed in Rust, so on each call I'm copying a lot of
+ data over and over. In the go implementation everything is just pointers
+ so there's less copying.
+</p><h3>Compile to bytecode</h3><p>With the Rust implementation, generating and compiling to bytecode was added.
+ Now it's possible to generate a bytecode file to later read it.
+ This is a way of distributing files without giving away source code and also 
+ a little bit more performant because you skip parsing and compilation phases.
+</p><p>How it works:
+<pre class="triple-quote bash language-css">grotsky compile example.gr  # Compile file
+grotsky example.grc  # Run compiled file
+</pre></p><h3>Memory model</h3><p>Grotsky is a reference-counted language. We're using Rust's Rc and RefCell to keep track of values.
+</p><p><pre class="triple-quote rust language-rust">pub struct MutValue&lt;T&gt;(pub Rc&lt;RefCell&lt;T&gt;&gt;);
+
+impl&lt;T&gt; MutValue&lt;T&gt; {
+    pub fn new(obj: T) -&gt; Self {
+        MutValue::&lt;T&gt;(Rc::new(RefCell::new(obj)))
+    }
+}
+
+pub enum Value {
+    Class(MutValue&lt;ClassValue&gt;),
+    Object(MutValue&lt;ObjectValue&gt;),
+    Dict(MutValue&lt;DictValue&gt;),
+    List(MutValue&lt;ListValue&gt;),
+    Fn(MutValue&lt;FnValue&gt;),
+    Native(NativeValue),
+    Number(NumberValue),
+    String(StringValue),
+    Bytes(BytesValue),
+    Bool(BoolValue),
+    Slice(SliceValue),
+    Nil,
+}
+
+pub enum Record {
+    Val(Value),
+    Ref(MutValue&lt;Value&gt;),
+}
+
+pub struct VM {
+    pub activation_records: Vec&lt;Record&gt;,
+}
+</pre></p><p>Most of the simple values are just stored as-is: Native (builtin functions), Number, String,
+ Bytes, Bool, Slice and Nil.
+</p><p>For the other complex values we need to use 'pointers' which in this case are MutValue.
+</p><p>Then the Grotsky VM uses Records which can be a plain Value or a reference to a Value.
+ The records are registers, each function has up to 255 registers.
+ The reference to values are used to store upvalues.
+ A register is turned into an upvalue when a variable is closed by another function.
+</p><p>This implementation ends up being very slow, but easy to manage. Because Rust stdlib
+ does all the work.
+</p><h3>Using Rust in this blogpost</h3><p>As you may know, this <a href='https://mliezun.com/2021/10/04/new-blog-engine.html' target='_blank'>blog is powered by grotsky</a>.
+ I'm happy to say that I successfully migrated from grotsky to grotsky-rs as the backend for the blog.
+ And what you're reading now is generated by the latest implementation of the language using Rust.
+</p><p>Even for local development the Rust version is used. Which means I'm using a TCP server and an HTTP
+ implementation written in Grotsky.
+</p><h3>Closing remarks</h3><p>This has been a great learning experience. I'm happy to have finished because it required a lot of effort.
+ I'm not gonna announce any new work on this interpreter but I would like to keep adding stuff.
+ Improving it further to make it more performant and more usable.
+</p><p>In the end I encourage everyone to try it and also start their own project. Is always cool to see
+ what everyone else is doing.
+</p><p>Thanks for reading.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

@@ -1,0 +1,168 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Sudoku Solver</title><meta name="generator" content="Custom"/><meta property="og:title" content="Sudoku Solver"/><meta property="og:locale" content="en_US"/><meta name="description" content="Iterative + recursive sudoku solver using python magic methods."/><meta property="og:description" content="Iterative + recursive sudoku solver using python magic methods."/><meta name="keywords" content="sudoku,python,solver"/><link rel="canonical" href="https://mliezun.com/2020/02/18/sudoku-solver.html"/><meta property="og:url" content="https://mliezun.com/2020/02/18/sudoku-solver.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Sudoku Solver"/><meta name="twitter:description" content="Iterative + recursive sudoku solver using python magic methods."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Iterative + recursive sudoku solver using python magic methods.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/02/18/sudoku-solver.html","headline":"Sudoku Solver","dateModified":"2020-02-18T00:00:00-03:00","datePublished":"2020-02-18T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/02/18/sudoku-solver.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Sudoku Solver
+</h2><p class="article-byline"><span class="byline-date">2020-02-18</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">sudoku,python,solver</span></p><div>
+I wanted to make my own sudoku solver to challenge myself.
+
+I'm not a sudoku player so my approach is a brute force scan of possible combinations sort-of.
+
+I just know the basic rules:
+
+<li>Numbers 1-9 are allowed.</li>
+<li>Numbers in the same row cannot be repeated.</li>
+<li>Numbers in the same column cannot be repeated.</li>
+<li>Numbers in the 3x3 square cannot be repeated.</li>
+
+The first thing i did was to build some classes that calculates the possible values a cell can have if it's empty, based on the constraints.
+
+I came up with 3 classes:
+
+<li><span class="single-quote">Board</span> that stores the entire board.</li>
+<li><span class="single-quote">BoardSlice</span> that stores a slice of a board. An object of this type is returned when a <span class="single-quote">Board</span> is sliced (method <span class="single-quote">__getitem__</span>).</li>
+<li><span class="single-quote">Cell</span> that stores the value of a single cell and calculates all possible values a cell can take.</li>
+
+The class <span class="single-quote">Cell</span> receives a board, the coordinates on the board, and the value it holds. It also has the method options that uses python <span class="single-quote">set</span> data structure to calculate the possibilities.
+
+If you look at the following snippet you can see that the method <span class="single-quote">options</span>
+generates the sets: <span class="single-quote">options</span> that contains all possible options (1-9), <span class="single-quote">row</span> that contains all the numbers that are in the same row, <span class="single-quote">column</span> that contains all the numbers that are in the same column and <span class="single-quote">square</span> that contains all the numbers that are in the same 3x3 square. The return value is <span class="single-quote">options</span> without all the used values.
+
+<pre class="triple-quote python">
+class Cell:
+    def __init__(self, b, i, j, value):
+        self.b = b
+        self.value = value
+        self.i = i
+        self.j = j
+
+    def options(self):
+        if self.value != 0:
+            return {self.value}
+        options = set(range(1, 10))
+        row = set(map(lambda x: x.value, self.b[self.i]))
+        column = set(map(lambda x: x.value, self.b[:][self.j]))
+        def to_square(k): return slice((k // 3) * 3, (k // 3) * 3 + 3)
+        square = set(
+            map(lambda x: x.value,
+                self.b[to_square(self.i)][to_square(self.j)]))
+        return options - row - column - square - {0}
+</pre>
+
+To make easier the implementation of the square I used the class <span class="single-quote">BoardSlice</span> that contains a slice of a board and implements the magic method <span class="single-quote">__getitem__</span>.
+
+<pre class="triple-quote python">
+class BoardSlice:
+    def __init__(self, board_slice):
+        self.board_slice = board_slice
+
+    def __getitem__(self, items):
+        if type(items) == slice:
+            return (el for row in self.board_slice for el in row[items])
+        if type(items) == int:
+            return (row[items] for row in self.board_slice)
+        raise KeyError
+</pre>
+
+The base class: <span class="single-quote">Board</span> contains the board and a copy method that copies all the values and creates a new <span class="single-quote">Board</span> object. This is necessary to avoid messing with object references and have a clean object when needed.
+
+<pre class="triple-quote python">
+class Board:
+    def __init__(self, board):
+        self.board = [[Cell(self, i, j, value)
+                       for (j, value) in enumerate(row)] for (i, row) in enumerate(board)]
+
+    def copy(self):
+        return Board(((cell.value for cell in row) for row in self.board))
+
+    def __getitem__(self, items):
+        if type(items) == int:
+            return self.board[items]
+        if type(items) == slice:
+            return BoardSlice(self.board[items])
+        raise KeyError
+
+    def __repr__(self):
+        return repr(self.board)
+</pre>
+
+With these tools the next step is to solve the problem!
+
+My idea was to generate a mixed iterative-recursive algorithm.
+
+The first pass will be iterative, and if needed, the second pass will be recursive.
+
+
+</div><h5>Iterative pass
+</h5><div>
+Iterates over the whole board and calculates the options that each cell can have. If a cell has only one option set that option on the cell and set a flag to repeat the iterative pass, if has 0 options return <span class="single-quote">None</span> meaning that the board has no solutions, and if has more than one option store the options for the recursive pass.
+
+If the loop ends and we found that no cell has more than one option then we solved the board!
+
+The idea of this first step is to solve an _easy_ board quickly.
+
+
+</div><h5>Recursive pass
+</h5><div>
+If the iterative pass ends and we found that a cell has more than one option then we try all that options and call solve again!
+
+If solve returns a board that means we've found the solution!
+
+If solve returns None (back at the iterative pass) we have to try with other options.
+
+
+</div><h5>BoardSolver
+</h5><div>
+The class is pretty straightforward.
+
+<pre class="triple-quote python">
+class SudokuSolver:
+    @staticmethod
+    def solve(board):
+        b = board.copy()
+        # First pass: Iterative
+        board_map = {}
+        exhaust = False
+        while not exhaust:
+            exhaust = True
+            for i in range(9):
+                for j in range(9):
+                    cell = b[i][j]
+                    if cell.value == 0:
+                        options = cell.options()
+                        if len(options) == 1:
+                            cell.value = options.pop()
+                            exhaust = False
+                        elif len(options) == 0:
+                            return None
+                        elif len(board_map) == 0:
+                            board_map[(i, j)] = options
+
+        # Second pass: Recursive
+        for ((i, j), options) in board_map.items():
+            for op in options:
+                b[i][j].value = op
+                solved = SudokuSolver.solve(b)
+                if solved:
+                    return solved
+            return None
+
+        return b
+</pre>
+
+
+</div><h5>Conclusions
+</h5><div>
+Actually my implementation is not a brute force algorithm, is a search algorithm, that searches the path to solving a board. Because it doesn't try all values on all cells nonsensically, it rather tries _some_ options for a given cell and advances to the next option as _soon_ as it detects that it's not the correct path.
+
+
+</div><h4>Source
+</h4><div>
+Take a look at the <a href="https://github.com/mliezun/sudoku-solver">source code</a>.
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

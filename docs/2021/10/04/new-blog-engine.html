@@ -1,0 +1,79 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>I created a programming language and this blog is powered by it</title><meta name="generator" content="Custom"/><meta property="og:title" content="I created a programming language and this blog is powered by it"/><meta property="og:locale" content="en_US"/><meta name="description" content="I created my own programming language using Go, then I built a blog engine and used that engine to build this blog."/><meta property="og:description" content="I created my own programming language using Go, then I built a blog engine and used that engine to build this blog."/><meta name="keywords" content="go,language,interpreters,programming"/><link rel="canonical" href="https://mliezun.com/2021/10/04/new-blog-engine.html"/><meta property="og:url" content="https://mliezun.com/2021/10/04/new-blog-engine.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="I created a programming language and this blog is powered by it"/><meta name="twitter:description" content="I created my own programming language using Go, then I built a blog engine and used that engine to build this blog."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"I created my own programming language using Go, then I built a blog engine and used that engine to build this blog.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2021/10/04/new-blog-engine.html","headline":"I created a programming language and this blog is powered by it","dateModified":"2021-10-04T00:00:00-03:00","datePublished":"2021-10-04T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2021/10/04/new-blog-engine.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>I created a programming language and this blog is powered by it</h2><p class="article-byline"><span class="byline-date">2021-10-04</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">go,language,interpreters,programming</span></p><h3>Why did I do it?</h3><div><p>Mostly for fun.</p><p>If you follow my blog or take a look at some of the posts that I made, you will see that I was
+building a programming language called 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a>. Just a toy programming language that I made based on the book 
+<a target="_blank" href="http://www.craftinginterpreters.com/">Crafting Interpreters</a>, which I totally recommend buying and reading if you haven't yet.
+</p><p>I wanted to build something interesting but simple enough that could be made with Grotsky.
+I thought that replacing Jekyll with my own engine was a task worth a try.
+There is nothing groundbreaking or innovative being made here, just a little experimentation.
+</p><p>I have to give credit to the project 
+<a target="_blank" href="https://github.com/fpereiro/lith">lith</a>, because the 'templating' engine for the blog is inspired by it.
+</p></div><h3>How did I do it?</h3><div><p>That's a good question.</p><p>Originally, this blog was powered by Jekyll, that translated markdown to html and hosted
+ by Github Pages. I decided that I was going to build a templating engine and generate html
+ to keep things simple.
+</p><p>But also, as a challenge I made a simple HTTP server to use as a dev server when trying the blog locally.
+</p></div><h3>HTTP Server</h3><div><p>For the purpose of having a custom HTTP Server I had to add support for TCP sockets to the language.
+I wrapped the go standard library in some functions and exposed that to the Grotsky language.
+In grotsky looks something like this
+</p><pre class="triple-quote go">
+let socket = net.listenTcp(host + ":" + port)
+let conn
+while true {
+	try {
+		conn = socket.accept()
+	} catch err {
+		io.println("Error accepting new connection", err)
+		continue
+	}
+	try {
+		# Call function that handles connection
+		handleConn(conn)
+	} catch err {
+		io.println("Error handling connection", err)
+	}
+	try {
+		conn.close()
+	} catch err {}
+}
+				
+</pre><p>This means that the server listens on a socket, accepts connections, writes some text/bytes to the connection
+ and then closes the connection.
+</p></div><h3>Template Engine</h3><div><p>The templating engine is built using the native support Grotsky provides for lists.
+A regular page for the blog looks like this:
+</p><pre class="triple-quote go">
+let base = import("../base.gr")
+# Create new Post Object
+let post = base.Post(
+	"Title",
+	"Brief description of blog post.",
+	"Author Name",
+	"descriptive,tags",
+	[
+		[
+			"h2",
+			[],
+			[
+				"Title"
+			]
+		],
+		[
+			"div",
+			["class", "content"],
+			[
+				"Content line 1",
+				"Content line 2",
+			]
+		]
+	]
+)
+			</pre><p>It's pretty straightforward: the first element of the list is the html tag, the second is
+an array of properties for the tag and the last one is a list that contains what will be
+the *content* enclosed by the tags.
+</p></div><h3>Resources</h3><div><p>If you want to take a peek, the source code for both projects is available on github:
+<ul><li><a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky Programming Language</a></li><li><a target="_blank" href="https://github.com/mliezun/mliezun.github.io">Blog Source Code</a></li></ul></p></div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

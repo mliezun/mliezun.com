@@ -1,0 +1,58 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Generating posts using markdown</title><meta name="generator" content="Custom"/><meta property="og:title" content="Generating posts using markdown"/><meta property="og:locale" content="en_US"/><meta name="description" content="Custom Markdown parser and HTML generator using Grotsky, my toy programming language that powers this blog. Up until now I've used a hacky HTML generator that relies on lists. Now I'm integrating a simple MD parser that makes it easier to write new articles."/><meta property="og:description" content="Custom Markdown parser and HTML generator using Grotsky, my toy programming language that powers this blog. Up until now I've used a hacky HTML generator that relies on lists. Now I'm integrating a simple MD parser that makes it easier to write new articles."/><meta name="keywords" content="markdown,parser,blog"/><link rel="canonical" href="https://mliezun.com/2024/01/04/new-markdown-generator.html"/><meta property="og:url" content="https://mliezun.com/2024/01/04/new-markdown-generator.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Generating posts using markdown"/><meta name="twitter:description" content="Custom Markdown parser and HTML generator using Grotsky, my toy programming language that powers this blog. Up until now I've used a hacky HTML generator that relies on lists. Now I'm integrating a simple MD parser that makes it easier to write new articles."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Custom Markdown parser and HTML generator using Grotsky, my toy programming language that powers this blog. Up until now I've used a hacky HTML generator that relies on lists. Now I'm integrating a simple MD parser that makes it easier to write new articles.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2024/01/04/new-markdown-generator.html","headline":"Generating posts using markdown","dateModified":"2024-01-04T00:00:00-03:00","datePublished":"2024-01-04T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2024/01/04/new-markdown-generator.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><p>
+</p><h1>Generating posts using markdown
+</h1><p class="article-byline"><span class="byline-date">2024-01-04</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">markdown,parser,blog</span></p><p>
+</p><p>This is pretty standard for Github pages. But in this case, the parser has been written by me. It takes some subset of markdown and compiles it to HTML.
+</p><p>Only what you see in this post is what's supported.
+</p><h2>Code blocks
+</h2><p>
+</p><p>Standard code block:
+</p><pre class="triple-quote ">Hello, this is a code block!
+</pre><p>
+</p><p>Syntax highlighting:
+</p><pre class="triple-quote python">from functools import reduce, partial
+import operator
+
+mul = partial(reduce, operator.mul)
+print("Factorial of 5:", mul(range(1, 6)))
+</pre><p>
+</p><h2>Unordered list
+</h2><p>
+</p><ul><li>This
+</li><li>is an
+</li><li>unordered list
+</li></ul><h2>Bolds, Italics and Inline code
+</h2><p>
+</p><p>Some text can be <strong>bolded</strong>, while some other can be in <em>Italics</em>.
+</p><p>But the best is to have <span class='single-quote'>print("inline code")</span>.
+</p><h2>Links and images
+</h2><p>
+</p><p><a target='_blank' href='https://github.com/mliezun/mliezun.github.io/blob/master/src/parse_md.gr'>Link to the blog source code where you can see how the parser works (tldr: is awful).</a>
+</p><p>Picture of NYC:
+</p><p><img alt='"Picture of NYC"' src='/assets/images/nyc.jpg'/>
+</p><h1>HEADINGS
+</h1><p>
+</p><p>There's a thing you haven't noticed so far. There's support for different kinds of headings. You can see them in increasing order here:
+</p><h6>Microscopic
+</h6><p>
+</p><h5>Small
+</h5><p>
+</p><h4>Good
+</h4><p>
+</p><h3>Pretty good
+</h3><p>
+</p><h2>Big
+</h2><p>
+</p><h1>Good bye!
+</h1><p>
+</p><p>Thanks for checking out the blog. I've done this to reduce the complexity of creating new blogposts. It was a headache before.
+</p><p>Hopefully now I'll write more. Stay tuned.
+</p><p>
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

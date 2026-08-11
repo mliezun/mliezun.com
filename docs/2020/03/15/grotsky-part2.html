@@ -1,0 +1,180 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Grotsky Part 2: Parsing expressions</title><meta name="generator" content="Custom"/><meta property="og:title" content="Grotsky Part 2: Parsing expressions"/><meta property="og:locale" content="en_US"/><meta name="description" content="Part 2 of building my own language series. Parsing expressions, traversing and printing the Abstract Syntax Tree."/><meta property="og:description" content="Part 2 of building my own language series. Parsing expressions, traversing and printing the Abstract Syntax Tree."/><meta name="keywords" content="parser,expression,ast"/><link rel="canonical" href="https://mliezun.com/2020/03/15/grotsky-part2.html"/><meta property="og:url" content="https://mliezun.com/2020/03/15/grotsky-part2.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Grotsky Part 2: Parsing expressions"/><meta name="twitter:description" content="Part 2 of building my own language series. Parsing expressions, traversing and printing the Abstract Syntax Tree."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Part 2 of building my own language series. Parsing expressions, traversing and printing the Abstract Syntax Tree.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/03/15/grotsky-part2.html","headline":"Grotsky Part 2: Parsing expressions","dateModified":"2020-03-15T00:00:00-03:00","datePublished":"2020-03-15T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/03/15/grotsky-part2.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Grotsky Part 2: Parsing expressions
+</h2><p class="article-byline"><span class="byline-date">2020-03-15</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">parser,expression,ast</span></p><div>
+
+</div><h3>Expressions
+</h3><div>
+Parsing an expression like <span class="single-quote">1+2*3</span> requires a complex representation in memory. Just looking at it we think that it's pretty simple, but there is some hidden <span class="single-quote">hierarchy</span> that we have to pay attention to, like the fact that first we have to compute <span class="single-quote">2*3</span> and then add <span class="single-quote">1</span> to it.
+
+To represent that in a data structure the best thing we can come up with is a tree, as seen in the next figure:
+
+![image](/assets/images/grotsky-part2/AST.png)
+
+As you can see the leaves of the tree are literals and the root and intermediate nodes are operations that have to be applied from the bottom up. That means that we traverse the tree until we reach the bottom and start computing the results by going up.
+
+
+</div><h3>Defining node types
+</h3><div>
+> Not all operations are created equal.
+
+We have to define how each node fits into the tree.
+
+I'll use the following syntax: <span class="single-quote">Binary -> left expr, operator token, right expr</span>. Which means that a binary operation (as we have seen in the image before) links to 2 expressions (left and right) and stores 1 value (operator).
+
+
+</div><h5>Let's define all possible operations on literals
+</h5><div>
+<pre class="triple-quote ">
+Literal -> value object
+# 1, "asd", 5.2, true, false
+
+Binary -> left expr, operator token, right expr
+# 1+2, 3*3, 4^2+1
+
+Grouping -> expression expr
+# (1+2)
+
+Logical -> left expr, operator token, right expr
+# true or false, false and true
+
+Unary: operator token, right expr
+# not true, -5
+
+List -> elements []expr
+# [1, 2, 3, [4], "asd"]
+
+Dictionary -> elements []expr
+# {"a": 1, "b": 2, 3: 4}
+
+Access -> object expr, slice expr
+# [1, 2, 3][0], {"a":1}["a"]
+
+Slice -> first expr, second expr, third expr
+# [1, 2, 3, 4, 5, 6][1:4:2]
+</pre>
+
+
+</div><h3>Traversing the abstract syntax tree
+</h3><div>
+To traverse the syntax tree we need a pattern that's uniform and easily scalable when we have to add other types of expressions and statements.
+
+For that we'll use the <a href="https://en.wikipedia.org/wiki/Visitor_pattern">Visitor Pattern</a>.
+
+
+</div><h4>Visitor Pattern
+</h4><div>
+First we need an interface for the expression that allows a visitor to visit it.
+
+<pre class="triple-quote go">
+type expr interface {
+    accept(exprVisitor) interface{}
+}
+</pre>
+
+An expression visitor should have a method for each kind of expression it has to visit.
+
+<pre class="triple-quote go">
+type exprVisitor interface {
+    visitLiteralExpr(expr expr) interface{}
+    visitBinaryExpr(expr expr) interface{}
+    visitGroupingExpr(expr expr) interface{}
+    visitLogicalExpr(expr expr) interface{}
+    visitUnaryExpr(expr expr) interface{}
+    visitListExpr(expr expr) interface{}
+    visitDictionaryExpr(expr expr) interface{}
+    visitAccessExpr(expr expr) interface{}
+    visitSliceExpr(expr expr) interface{}
+}
+</pre>
+
+Then we have to define a type for each kind of expression that implements <span class="single-quote">expr</span> interface. For example, this is the implementation for a binary expression:
+
+<pre class="triple-quote go">
+type binaryExpr struct {
+    left expr
+    operator *token
+    right expr
+}
+
+func (s *binaryExpr) accept(visitor exprVisitor) R {
+    return visitor.visitBinaryExpr(s)
+}
+</pre>
+
+For all other expressions the definition is practically the same.
+
+
+</div><h4>String Visitor
+</h4><div>
+To finish this chapter, let's define a visitor that allows you to print the syntax tree in a lisp-like syntax, ex: (+ 1 2).
+
+Here is the implementation of the string visitor for a binary expression:
+
+<pre class="triple-quote go">
+type stringVisitor struct{}
+
+func (v stringVisitor) visitBinaryExpr(expr expr) R {
+    binary := expr.(*binaryExpr)
+    return fmt.Sprintf("(%s %v %v)", binary.operator.lexeme, binary.left.accept(v), binary.right.accept(v))
+}
+</pre>
+
+
+</div><h3>Grotsky expression
+</h3><div>
+You can check out the state of the Grotsky project right here: <a href="https://github.com/mliezun/grotsky">https://github.com/mliezun/grotsky</a>.
+
+Grotsky it's able to parse and print all types of expressions defined in this article right now.
+
+
+</div><h4>Expressions
+</h4><div>
+Examples of operations supported:
+
+<pre class="triple-quote ">
+# Math operations
+1+2*3^2-(4+123)/2.6
+=> (- (+ 1 (* 2 (^ 3 2))) (/ (+ 4 123) 2.6))
+
+# Logical operations
+true or false
+=> (or true false)
+
+# Comparisons
+1 == 1 and (1 > 3 or 11/5.5 <= 3+2^2 and 1 != 2)
+=> (and (== 1 1) (or (> 1 3) (and (<= (/ 11 5.5) (+ 3 (^ 2 2))) (!= 1 2))))
+
+# Lists
+[1, 2, [3], "asd"]
+=> (list 1 2 (list 3) "asd")
+
+# List slicing
+[1,2,3,4][1:3][::2][0]
+=> (#0 (#::2 (#1:3 (list 1 2 3 4))))
+
+# Dictionary
+{
+    1: 2,
+    3: 4,
+    "asd": 3.14
+}
+=> (dict 1=>2 3=>4 "asd"=>3.14)
+
+# Dictionary key lookup
+{"key":0.6}["key"]
+=> (#"key" (dict "key"=>0.6))
+</pre>
+
+That's it for now. In the next chapter we'll traverse the tree but instead of printing we'll execute the operations listed before.
+
+If you have questions or suggestions please get in touch.
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

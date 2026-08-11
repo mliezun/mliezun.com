@@ -1,0 +1,66 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>How to write a program that can replicate itself</title><meta name="generator" content="Custom"/><meta property="og:title" content="How to write a program that can replicate itself"/><meta property="og:locale" content="en_US"/><meta name="description" content="Grotsky is a toy programming language that I made for fun. Today we're visiting the concept of Quines, 
+a.k.a. self replicating programs. It's said that any turing-complete language should be able to write a program that replicates
+ itself. And grotsky is no exception."/><meta property="og:description" content="Grotsky is a toy programming language that I made for fun. Today we're visiting the concept of Quines, 
+a.k.a. self replicating programs. It's said that any turing-complete language should be able to write a program that replicates
+ itself. And grotsky is no exception."/><meta name="keywords" content="replication,programming,grotsky,duplication,quine,turing-complete"/><link rel="canonical" href="https://mliezun.com/2022/11/26/grotsky-quine.html"/><meta property="og:url" content="https://mliezun.com/2022/11/26/grotsky-quine.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="How to write a program that can replicate itself"/><meta name="twitter:description" content="Grotsky is a toy programming language that I made for fun. Today we're visiting the concept of Quines, 
+a.k.a. self replicating programs. It's said that any turing-complete language should be able to write a program that replicates
+ itself. And grotsky is no exception."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Grotsky is a toy programming language that I made for fun. Today we're visiting the concept of Quines, 
+a.k.a. self replicating programs. It's said that any turing-complete language should be able to write a program that replicates
+ itself. And grotsky is no exception.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2022/11/26/grotsky-quine.html","headline":"How to write a program that can replicate itself","dateModified":"2022-11-26T00:00:00-03:00","datePublished":"2022-11-26T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2022/11/26/grotsky-quine.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>How to write a program that can replicate itself</h2><p class="article-byline"><span class="byline-date">2022-11-26</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">replication,programming,grotsky,duplication,quine,turing-complete</span></p><p>Grotsky is a toy programming language that I made for fun. Today we're visiting the concept of Quines, 
+a.k.a. self replicating programs. It's said that any turing-complete language should be able to write a program that replicates
+ itself. And grotsky is no exception.</p><p>Read more about grotsky in previous blogposts:
+<ul><li><a target="_blank" href="https://mliezun.com/2020/02/21/grotsky-part1.html">Grotsky Part 1: Syntax</a></li><li><a target="_blank" href="https://mliezun.com/2020/03/15/grotsky-part2.html">Grotsky Part 2: Parsing expressions</a></li><li><a target="_blank" href="https://mliezun.com/2020/04/01/grotsky-part3.html">Grotsky Part 3: Interpreting</a></li><li><a target="_blank" href="https://mliezun.com/2020/12/17/grotsky-getmyip.html">Grotsky Part 4: Writing a service to get your public IP</a></li><li><a target="_blank" href="https://mliezun.com/2021/10/04/new-blog-engine.html">I created a programming language and this blog is powered by it</a></li></ul></p><p>Quines are very easy to write. The language that you're using needs to be able to do a couple things:
+<ul><li>Write to a file or stdout (print)</li><li>Support for string arrays</li><li>Translate numbers/integers to character ascii representation</li><li>Concatenate strings</li><li>Loop through arrays from arbitrary indexes</li></ul></p><h3>Super simple quine: less than 30 lines of code</h3><p><pre class="triple-quote go">let tabChar = 9
+let quoteChar = 34
+let commaChar = 44
+let code = [
+	"let tabChar = 9",
+	"let quoteChar = 34",
+	"let commaChar = 44",
+	"let code = [",
+	"]",
+	"for let i = 0; i < 4; i = i+1 {",
+	"	io.println(code[i])",
+	"}",
+	"for let i = 0; i < code.length; i = i+1 {",
+	"	io.println(strings.chr(tabChar) + strings.chr(quoteChar) + code[i] + strings.chr(quoteChar) + strings.chr(commaChar))",
+	"}",
+	"for let i = 4; i < code.length; i = i+1 {",
+	"	io.println(code[i])",
+	"}",
+]
+for let i = 0; i < 4; i = i+1 {
+	io.println(code[i])
+}
+for let i = 0; i < code.length; i = i+1 {
+	io.println(strings.chr(tabChar) + strings.chr(quoteChar) + code[i] + strings.chr(quoteChar) + strings.chr(commaChar))
+}
+for let i = 4; i < code.length; i = i+1 {
+	io.println(code[i])
+}
+
+</pre></p><p>Now we can use grotsky cli to run the program and compare the output to the original source.
+</p><p>Save the original source to a file called 
+<span class="single-quote">quine.gr</span> then run the following commands:
+<pre class="triple-quote bash">
+$ grotsky quine.gr > quine_copy.gr
+$ cmp quine.gr quine_copy.gr
+$ echo $?
+0
+
+</pre></p><p>If you see a 0 as the final output that means the files are the same.
+ Otherwise if you saw an error message or a different output, that means something has gone wrong.
+</p><p>How exciting is this?!!
+We've just written a program that gives itself as an output. 
+That sounds impossible when you hear it for the first time. But it was actually pretty easy!
+</p><p>Source code available here: 
+<a target="_blank" href="https://gist.github.com/mliezun/c750ba701608850bd86d646a3ebf700f">https://gist.github.com/mliezun/c750ba701608850bd86d646a3ebf700f</a>.
+</p><p>Grotsky cli binary available here:
+<a target="_blank" href="https://github.com/mliezun/grotsky/releases/tag/v0.0.6">https://github.com/mliezun/grotsky/releases/tag/v0.0.6</a></p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

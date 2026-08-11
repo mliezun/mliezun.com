@@ -1,0 +1,190 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>From Script to Binary, Creating single executables with Grotsky</title><meta name="generator" content="Custom"/><meta property="og:title" content="From Script to Binary, Creating single executables with Grotsky"/><meta property="og:locale" content="en_US"/><meta name="description" content="Recently I added the possibility to embed compiled scripts to Grotsky, this makes it super easy to generate single executables that can be easily distributed."/><meta property="og:description" content="Recently I added the possibility to embed compiled scripts to Grotsky, this makes it super easy to generate single executables that can be easily distributed."/><meta name="keywords" content="grotsky,binary,script,compile,embed,executable"/><link rel="canonical" href="https://mliezun.com/2024/04/11/embedding-scripts.html"/><meta property="og:url" content="https://mliezun.com/2024/04/11/embedding-scripts.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="From Script to Binary, Creating single executables with Grotsky"/><meta name="twitter:description" content="Recently I added the possibility to embed compiled scripts to Grotsky, this makes it super easy to generate single executables that can be easily distributed."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Recently I added the possibility to embed compiled scripts to Grotsky, this makes it super easy to generate single executables that can be easily distributed.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2024/04/11/embedding-scripts.html","headline":"From Script to Binary, Creating single executables with Grotsky","dateModified":"2024-04-11T00:00:00-03:00","datePublished":"2024-04-11T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2024/04/11/embedding-scripts.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>From Script to Binary, Creating single executables with Grotsky
+</h1><p class="article-byline"><span class="byline-date">2024-04-11</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">grotsky,binary,script,compile,embed,executable</span></p><p>
+</p><p>Recently I added the possibility to embed compiled scripts to Grotsky, this makes it super easy to generate single executables that can be easily distributed.
+</p><p>Using the release <a target='_blank' href='https://github.com/mliezun/grotsky/releases/tag/v0.0.13'>v0.0.13</a> of Grotsky, a toy programming language that I've been developing for a while, you can compile scripts into bytecode and embed them into a single binary that can be easily distributed.
+</p><p>For now, it's only possible to embed a single script, so if your script needs to import something it won't work.
+</p><h2>How embedding works
+</h2><p>
+</p><p>Grotsky by default generates a magic pattern at compile time. It's 512 bytes and is stored as a static variable.
+</p><p>To generate that pattern we use the <a target='_blank' href='https://crates.io/crates/const-random'>const-random</a> crate.
+</p><p>We use that to define a marker and identify if the Grotsky binary is running in embedded mode or not.
+</p><pre class="triple-quote rust">#[repr(C)]
+struct Marker {
+    magic_pattern: [u8; 512],
+    is_embedded: u8,
+}
+
+const fn new_marker() -> Marker {
+    Marker{
+        magic_pattern: const_random!([u8; 512]),
+        is_embedded: 0,
+    }
+}
+
+static EMBEDDED_MARKER: Marker = new_marker();
+</pre><p>
+</p><p>Then we can use a very hacky trick to take a compiled script and generate a single executable with the embedded bytecode.
+</p><pre class="triple-quote rust">pub fn embed_file(compiled_script: String, output_binary: String) {
+    // Get the path of the current executable (Grotsky interpreter)
+    let exe_path = env::current_exe().unwrap();
+    let mut exe_contents = read(exe_path).unwrap();
+    let pattern = &amp;EMBEDDED_MARKER.magic_pattern;
+
+    // Find the magic pattern inside the executable. Given that is a static
+    // variable with a value defined at compile time, it has to be stored in
+    // the binary, we can find it and switch the `is_embedded` flag.
+    if let Some(pos) = find_position(&amp;exe_contents, pattern) {
+        // We defined the Marker struct with a C representation
+        // which means that right after the magic PATH we have a byte
+        // that indicates if the interpreter is running in embedded mode or not.
+        exe_contents[pos+512] = 1;
+
+        // We add the magic pattern at the end of the executable again.
+        // As a stop mark that right after that the bytecode will come.
+        for i in 0..512 {
+            exe_contents.push(pattern[i]);
+        }
+
+        // Now we read the compiled code and add it to the end of the new executable.
+        let mut compiled_content = read(compiled_script).unwrap();
+        exe_contents.append(&amp;mut compiled_content);
+
+        // We write a single file with the bytecode concatenated at the end.
+        write(output_binary, exe_contents).unwrap();
+    }
+}
+
+// Function to find the position of magic pattern in a stream of bytes
+fn find_position(haystack: &amp;Vec<u8>, needle: &amp;[u8; 512]) -> Option<usize> {
+    if haystack.len() < needle.len() {
+        return None;
+    }
+    for i in 0..=haystack.len() - needle.len() {
+        if &amp;haystack[i..i + needle.len()] == needle.as_ref() {
+            return Some(i);
+        }
+    }
+    None
+}
+</pre><p>
+</p><p>We're using the magic pattern as a stop mark. Our resulting binary will have the same magic pattern twice.
+First is the original that gets loaded as a global static variable. The second one is almost at the end of
+the file and indicates the beginning of the embedded bytecode.
+</p><p>We also need a function to detect if we're running under "embedded" mode. In that case the interpreter should only
+read the embedded bytecode and execute it.
+</p><pre class="triple-quote rust">pub fn is_embedded() -> bool {
+    let embedded_indicator = &amp;EMBEDDED_MARKER.is_embedded as *const u8;
+    unsafe {
+        // Need to perform this trick to read the actual memory location.
+        // Otherwise during compilation Rust does static analysis and assumes
+        // this function always returns the same value.
+        return ptr::read_volatile(embedded_indicator) != 0;
+    }
+}
+</pre><p>
+</p><p>We change the value without the Rust compiler ever knowing, so we do a volatile read of the pointer to make sure
+we actually load the value from memory.
+</p><p>Otherwise the Rust compiler assumes that this always returns 0, because it is hardcoded in the <span class='single-quote'>new_marker</span> function
+and is never changed in the codebase.
+</p><p>Now we can proceed to run in "embedded" mode.
+</p><pre class="triple-quote rust">pub fn execute_embedded() {
+    // Get path of current executable
+    let exe_path = env::current_exe().unwrap();
+    interpreter::set_absolute_path(exe_path.clone().to_str().unwrap().to_string());
+
+    let exe_contents = read(exe_path).unwrap();
+    let pattern = &amp;EMBEDDED_MARKER.magic_pattern;
+
+    // The offset is 512 because that's the size of the magic pattern
+    let offset: usize = 512;
+
+    // Find first match (original)
+    let first_match = find_position(&amp;exe_contents, pattern).unwrap();
+
+    // We try to find the second mark by reading what comes after the first one
+    let remaining = &amp;exe_contents[first_match+offset..].to_vec();
+    let pos = find_position(remaining, pattern).unwrap();
+
+    // The bytecode is located right after the second mark
+    let compiled_content = &amp;remaining[pos+offset..];
+    
+    // Run interpreter from bytecode
+    if !interpreter::run_interpreter_from_bytecode(&amp;compiled_content) {
+        println!("Could not read embedded script");
+        exit(1);
+    }
+}
+</pre><p>
+</p><p>With all those functions, the only thing I need to do is add an if-statement to the <span class='single-quote'>main</span> function in the Rust project
+to check if we're on embedded mode and proceed accordingly.
+</p><pre class="triple-quote rust">fn main() {
+    if embed::is_embedded() {
+        embed::execute_embedded();
+        return;
+    }
+    // Continue executing normally
+    // ...
+}
+</pre><p>
+</p><p>That's it. That's all that takes to implement single binaries with Grotsky.
+Continue reading to see an example of how to actually use this feature.
+</p><h2>Embedding example: Make your own Grep
+</h2><p>
+</p><p>Let's try to reproduce a simple version of the well-known Unix tool <span class='single-quote'>grep</span>.
+</p><p>Store the following script in a file called <span class='single-quote'>grep.gr</span>:
+</p><pre class="triple-quote js"># Join a list of strings separated by space " "
+fn join(list) {
+	let out = ""
+	for let i = 0; i < list.length; i = i + 1 {
+		out = out + list[i]
+		if i < list.length - 1 {
+			out = out + " "
+		}
+	}
+	return out
+}
+
+# Check that a pattern was provided
+if process.argv.length == 1 {
+	io.println("Usage:\n\tgrep [pattern ...]")
+	return 1
+}
+
+# Join argv[1:] into a pattern
+let pattern = join(process.argv[1:])
+
+# Read first line
+let line = io.readln()
+
+# While we are not in EOF
+#   Check that line matches pattern and print it
+#   Consume next line
+while line != nil {
+	if re.match(pattern, line) {
+		io.println(line)
+	}
+	line = io.readln()
+}
+</pre><p>
+</p><p>Then it can be used like this:
+</p><pre class="triple-quote ">$ cat file.txt | ./grotsky grep.gr pattern
+</pre><p>
+</p><p>And it will print all lines that match the "pattern".
+</p><p>We can also package it as a single binary by doing the following commands.
+</p><pre class="triple-quote ">$ ./grotsky compile grep.gr
+$ ./grotsky embed grep.grc
+</pre><p>
+</p><p>Now we should have a <span class='single-quote'>grep.exe</span> in our directory. And we can use it:
+</p><pre class="triple-quote ">$ chmod +x grep.exe
+$ cat file.txt | ./grep.exe pattern
+</pre><p>
+</p><p>Should work the same as the previous example.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

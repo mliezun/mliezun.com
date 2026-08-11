@@ -1,0 +1,194 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Grotsky Part 4: Writing a service to get your public IP</title><meta name="generator" content="Custom"/><meta property="og:title" content="Grotsky Part 4: Writing a service to get your public IP"/><meta property="og:locale" content="en_US"/><meta name="description" content="Part 4 of building my own language series. This time I write and deploy a service to Heroku that lets you retrieve your public IP."/><meta property="og:description" content="Part 4 of building my own language series. This time I write and deploy a service to Heroku that lets you retrieve your public IP."/><meta name="keywords" content="grotsky,service,http,heroku,ip"/><link rel="canonical" href="https://mliezun.com/2020/12/17/grotsky-getmyip.html"/><meta property="og:url" content="https://mliezun.com/2020/12/17/grotsky-getmyip.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Grotsky Part 4: Writing a service to get your public IP"/><meta name="twitter:description" content="Part 4 of building my own language series. This time I write and deploy a service to Heroku that lets you retrieve your public IP."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Part 4 of building my own language series. This time I write and deploy a service to Heroku that lets you retrieve your public IP.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/12/17/grotsky-getmyip.html","headline":"Grotsky Part 4: Writing a service to get your public IP","dateModified":"2020-12-17T00:00:00-03:00","datePublished":"2020-12-17T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/12/17/grotsky-getmyip.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Writing a service to get your public IP
+</h2><p class="article-byline"><span class="byline-date">2020-12-17</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">grotsky,service,http,heroku,ip</span></p><div>
+<a href="https://github.com/mliezun/grotsky">Grotsky</a> (my toy programming language) finally can be used to make something useful.
+
+In this post I want to show you how I made a service that lets you retrieve your public IP as a response to an HTTP request.
+
+
+</div><h3>Show me the code
+</h3><div>
+Let's start by building the http request handler.
+
+The service will be deployed to heroku. Heroku passes the port that the http server has to listen as an environment variable named <span class="single-quote">PORT</span>.
+
+
+</div><h5>Let's get the server up and running
+</h5><div>
+<pre class="triple-quote ">
+let listen = ":8092"
+let port = env.get("PORT")
+if port != "" {
+    listen = ":" + port
+}
+
+io.println("Listen " + listen)
+http.listen(listen)
+</pre>
+
+We listen by default at the port 8092 and if the environment variable is given we change it.
+
+Then we print what is the port and start the server with <span class="single-quote">http.listen</span>. That blocks the execution and starts the server.
+
+Grotsky interpreter is written in Go, and uses Go's standard http server. Each request is handled by a goroutine, but because Grotsky is single threaded only one goroutine executes at any given point in time. 
+
+When a request is received the goroutine has to hold the GIL (Global Interpreter Lock) to be able to give control to the interpreter.
+
+
+</div><h5>Now let's add some code to handle requests
+</h5><div>
+<pre class="triple-quote ">
+fn getIP(rq, rs) {
+    io.println("Request from --> " + rq.address)
+    rs.write(200, rq.address)
+}
+
+http.handler("/", getIP)
+
+let listen = ":8092"
+let port = env.get("PORT")
+if port != "" {
+    listen = ":" + port
+}
+
+io.println("Listen " + listen)
+http.listen(listen)
+</pre>
+
+Now we have something interesting to try out!
+
+What we've done is to log and write back as response the address of the device that is doing the request.
+
+To try it out you need to download grotsky.
+
+<pre class="triple-quote bash">
+$ go get github.com/mliezun/grotsky/cmd/grotsky
+</pre>
+
+Save the Grotsky code under a file called <span class="single-quote">getip.g</span> and then execute it using the grotsky interpreter:
+
+<pre class="triple-quote bash">
+$ go run $(go env GOPATH)/src/github.com/mliezun/grotsky/cmd/grotsky getip.g
+</pre>
+
+Output:
+<pre class="triple-quote ">
+Listen :8092
+</pre>
+
+Now you can make a request to see if it is working
+
+<pre class="triple-quote bash">
+$ curl localhost:8092
+</pre>
+
+Output:
+<pre class="triple-quote ">
+[::1]:43464
+</pre>
+
+We see that the address contains the port we want to split it and show just the IP.
+
+
+
+</div><h5>Let's write a couple functions to do that
+</h5><div>
+<pre class="triple-quote ">
+fn findReversed(string, char) {
+    for let i = string.length-1; i > -1; i = i - 1 {
+        if string[i] == char {
+            return i
+        }
+    }
+    return -1
+}
+
+fn parseIP(address) {
+    let ix = findReversed(address, ":")
+    return address[:ix]
+}
+</pre>
+
+The function <span class="single-quote">findReversed</span> finds the first index where <span class="single-quote">char</span> appears in <span class="single-quote">string</span> starting from the end.
+
+The function <span class="single-quote">parseIP</span> uses <span class="single-quote">findReversed</span> to obtain the index where ":" splits the IP and the PORT and uses that index to return just the IP address.
+
+
+</div><h5>Now we can send just the IP address
+</h5><div>
+<pre class="triple-quote ">
+fn getIP(rq, rs) {
+    let address = parseIP(rq.address)
+    io.println("Request from --> " + address)
+    rs.write(200, address)
+}
+</pre>
+
+Add the two functions at the beginning of the file and modify the getIP function.
+
+Restart the server and now if you make a request you should get just the IP.
+
+<pre class="triple-quote ">
+$ curl localhost:8092
+[::1]
+</pre>
+
+Voila!
+
+
+
+</div><h5>We have just one last issue: Proxies!
+</h5><div>
+Our service will probably sit behind a proxy, so we need to read the address from a special header <span class="single-quote">X-Forwarded-For</span>.
+
+Let's implement that!
+
+<pre class="triple-quote ">
+fn getIP(rq, rs) {
+    let address = parseIP(rq.address)
+    let forwarded = rq.headers["X-Forwarded-For"]
+    if forwarded != nil {
+        address = forwarded[0]
+    }
+    io.println("Request from --> " + address)
+    rs.write(200, address)
+}
+</pre>
+
+We read the header from the request and if <span class="single-quote">X-Forwarded-For</span> is present we sent that as a response to the user.
+
+
+</div><h5>Our work is complete. Let's try it!
+</h5><div>
+<pre class="triple-quote ">
+$ curl localhost:8092 -H 'X-Forwarded-For: 8.8.8.8'
+8.8.8.8
+
+$ curl localhost:8092
+[::1]
+</pre>
+
+Well done. Now you can deploy it to Heroku (that's up to you) or any other cloud platform.
+
+I have my own version running under: https://peaceful-lowlands-45821.herokuapp.com/
+
+
+
+</div><p>Deployed to Fly.io after Heroku killed the free plan: 
+http://morning-breeze-4255.fly.dev
+</p><h5>Try it from your command line
+</h5><div>
+<pre class="triple-quote bash">
+$ curl http://morning-breeze-4255.fly.dev
+</pre>
+
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

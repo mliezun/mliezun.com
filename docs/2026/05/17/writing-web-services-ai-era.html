@@ -1,0 +1,138 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Writing web services in the AI-era</title><meta name="generator" content="Custom"/><meta property="og:title" content="Writing web services in the AI-era"/><meta property="og:locale" content="en_US"/><meta name="description" content="AI is making rewrites cheap and vulnerabilities easier to find. The stack that survives will be layered, boring at the boundaries, and easy for agents to swap one piece at a time."/><meta property="og:description" content="AI is making rewrites cheap and vulnerabilities easier to find. The stack that survives will be layered, boring at the boundaries, and easy for agents to swap one piece at a time."/><meta name="keywords" content="software,ai,web,htmx,future,prediction"/><link rel="canonical" href="https://mliezun.com/2026/05/17/writing-web-services-ai-era.html"/><meta property="og:url" content="https://mliezun.com/2026/05/17/writing-web-services-ai-era.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Writing web services in the AI-era"/><meta name="twitter:description" content="AI is making rewrites cheap and vulnerabilities easier to find. The stack that survives will be layered, boring at the boundaries, and easy for agents to swap one piece at a time."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"AI is making rewrites cheap and vulnerabilities easier to find. The stack that survives will be layered, boring at the boundaries, and easy for agents to swap one piece at a time.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2026/05/17/writing-web-services-ai-era.html","headline":"Writing web services in the AI-era","dateModified":"2026-05-17T00:00:00-03:00","datePublished":"2026-05-17T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2026/05/17/writing-web-services-ai-era.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta ai-assisted">AI-assisted
+<span class="ai-tag-popover">An AI tool was used to generate a part or all content of this post
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Writing web services in the AI-era
+</h1><p class="article-byline"><span class="byline-date">2026-05-17</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">software,ai,web,htmx,future,prediction</span></p><p>
+</p><p>A few threads from the last year are starting to click together for me: AI-assisted tooling producing <a target='_blank' href='https://daniel.haxx.se/blog/2026/04/22/high-quality-chaos/'>high-quality code</a>, offensive security getting <a target='_blank' href='https://kabir.au/blog/the-ctf-scene-is-dead'>easier than ever</a>, serious bugs still landing in <a target='_blank' href='https://daniel.haxx.se/blog/2026/05/11/mythos-finds-a-curl-vulnerability/'>curl</a> and the Linux kernel (<a target='_blank' href='https://github.com/V4bel/dirtyfrag'>Dirty Frag</a>, <a target='_blank' href='https://xint.io/blog/copy-fail-linux-distributions'>Copy Fail</a>), and rewrites happening at a pace that would have sounded absurd recently. Bun <a target='_blank' href='https://github.com/oven-sh/bun/pull/30412'>moving from Zig to Rust in about a week</a>, new languages appearing because agents make experimentation cheap.
+</p><p>Supply-chain attacks like the <a target='_blank' href='https://tanstack.com/blog/npm-supply-chain-compromise-postmortem'>TanStack npm compromise</a> remind us that speed without scrutiny is dangerous. OpenAI, Snyk, and others published <a target='_blank' href='https://openai.com/index/our-response-to-the-tanstack-npm-supply-chain-attack/'>postmortems</a> within days. The lesson isn't "don't use AI." It's that the shape of our systems matters more when both builders and attackers move faster.
+</p><p>So what does software engineering look like from here? Our job is now to design layers agents can understand and rewrite without breaking everything else.
+</p><h2>Build for replacement
+</h2><p>
+</p><p>Most apps already split into familiar layers. Nowadays is easier to swap those layers with the help of AI agents.
+</p><p>The <strong>database layer</strong> is the hardest to change. Anyone who migrated MySQL 5.7 to 8.0 under load knows this. Switching engines entirely is worse. Schema, migrations, and queries should live in plain SQL files everyone can read, not buried inside an ORM that's tied to one language.
+</p><p>The <strong>presentation layer</strong> is hard for a different reason: users notice. Rip out the UI and people complain even if the API is identical. Prefer small, server-rendered pages with <a target='_blank' href='https://htmx.org/'>HTMX</a> and vanilla CSS over heavyweight SPA frameworks; since this maintains more of the ownership in your codebase instead of third-party dependencies. LLMs are good at HTML and CSS. They're also good at generating React, but React comes with a much heavier runtime and dependency tree. Each dependency we add increases our surface attack area.
+</p><p>The <strong>reverse proxy</strong> is mostly invisible. Caddy, nginx, Envoy. Swap them when you need to.
+</p><p>The <strong>service layer</strong> is where rewrites already happen. Early in your career someone probably asked you to port a small Python service to Go or Rust while keeping the HTTP contract stable. That pattern is about to become the default, not the exception.
+</p><div class="mermaid">flowchart LR
+
+U[User / Computer / HTTP]
+
+RP[Reverse Proxy / Load Balancer]
+
+P[Presentation Layer<br/>HTML / CSS / JS<br/>HTMX + Vanilla JS]
+
+S[Service Layer<br/>HTTP Controllers<br/>Python / Go / TypeScript / etc.]
+
+DB[Database Layer<br/>MySQL / PostgreSQL]
+
+U --> RP
+RP --> P
+P --> S
+S --> DB
+</div><p>
+</p><p>The goal isn't novelty. It's <strong>decoupling</strong>: make each box replaceable without a company-wide rewrite.
+</p><h2>A monorepo layout agents can understand
+</h2><p>
+</p><p>Here's a structure I've been experimenting with: a monorepo where boundaries are folders, not frameworks:
+</p><pre class="triple-quote ">db/
+  migrations/
+    2026_06_20_initial_posts_author_and_tasks.sql
+  queries/
+    get_posts.sql
+    get_post_with_author.sql
+    fetch_all_tasks.sql
+service/
+  controller/
+    posts.py        # reads .sql files, no ORM
+  main.py           # HTTP server and routes
+tasks/
+  worker.js         # background jobs, also uses .sql files
+web/
+  posts/
+    post-detail.html
+    post-list.html
+  index.html
+  index.js
+tests/
+  main.rb           # end-to-end tests, written for humans
+</pre><p>
+</p><p>Each layer can pick the language that fits:
+</p><ul><li><strong>db/</strong>: human-reviewed. This is where data integrity and access control live. High scrutiny, low tolerance for agent slop.
+</li><li><strong>service/</strong>: LLM-heavy. Controllers are thin; business rules can be rewritten from Python to Rust without touching SQL or HTML.
+</li><li><strong>web/</strong>: HTMX, plain templates, plain CSS. No Tailwind, no component library lock-in. Easy to regenerate, easy to diff.
+</li><li><strong>tasks/</strong>: JavaScript or whatever handles async well today. Swappable.
+</li><li><strong>tests/</strong>: Ruby (or anything readable). End-to-end tests are a contract written for humans. If an agent rewrites <span class='single-quote'>service/</span> from Python to Rust, these tests should still pass.
+</li></ul><p>The rule of thumb: <strong>tell an agent to rewrite one top-level folder and leave the interfaces alone.</strong>
+</p><p>Example: migrate <span class='single-quote'>service/</span> from Python to Rust. Queries in <span class='single-quote'>db/queries/</span> stay the same. Templates in <span class='single-quote'>web/</span> stay the same. Integration tests in <span class='single-quote'>tests/</span> stay the same. Only the controller implementation changes.
+</p><p>That's the world I think we're heading toward, not "one true stack," but stacks with explicit seams.
+</p><h2>You don't need a microframework
+</h2><p>
+</p><p>Frameworks like Flask and FastAPI are small, but they're still Python-shaped glue. For a service layer meant to be rewritten, a thin <a target='_blank' href='https://asgi.readthedocs.io/en/latest/specs/main.html'>ASGI</a> router is enough:
+</p><pre class="triple-quote python">async def get_posts(scope, receive, send):
+    await send({
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [[b"content-type", b"text/html; charset=utf-8"]],
+    })
+    await send({
+        "type": "http.response.body",
+        "body": render("web/posts/post-list.html"),
+    })
+
+routes = {
+    ("GET", "/posts"): get_posts,
+}
+
+async def app(scope, receive, send):
+    handler = routes.get((scope["method"].upper(), scope["path"]))
+    if handler:
+        await handler(scope, receive, send)
+    else:
+        await send({"type": "http.response.start", "status": 404, "headers": []})
+        await send({"type": "http.response.body", "body": b"Not Found"})
+</pre><p>
+</p><p>Fifty lines. No magic. An agent can port this to Go's <span class='single-quote'>net/http</span> or Rust's Axum without guessing at framework conventions.
+</p><p>Tools like <a target='_blank' href='https://mise.jdx.dev/'>mise</a> help pin runtimes per folder so <span class='single-quote'>service/</span> and <span class='single-quote'>tasks/</span> can use different language versions without fighting system packages.
+</p><h2>Putting it to the test: a monitoring app
+</h2><p>
+</p><p>I wrote the layered prompt above into a spec and asked an agent to build a small uptime monitor with Slack/Discord notifications. The result is deliberately simple, not production-ready, but structurally interesting: <a target='_blank' href='https://github.com/mliezun/example-monitoring'>example-monitoring on GitHub</a>.
+</p><p><img alt='' src='/assets/images/example-monitoring/screenshot-1-login.png'/>
+</p><p><em>The landing page. The subtitle calls out the stack: raw SQL, sync WSGI, HTMX templates, and a JavaScript poller.</em>
+</p><p><img alt='' src='/assets/images/example-monitoring/screenshot-2-dashboard.png'/>
+</p><p><em>After logging in, the dashboard lists monitored sites. Empty on first visit.</em>
+</p><p><img alt='' src='/assets/images/example-monitoring/screenshot-3-setup.png'/>
+</p><p><em>Adding a site: URL, poll interval, acceptable HTTP status codes, and retry attempts per cycle.</em>
+</p><p><img alt='' src='/assets/images/example-monitoring/screenshot-4-monitor.png'/>
+</p><p><em>A site detail page showing current status and a table of recent poll results (HTTP code, latency, errors).</em>
+</p><p><img alt='' src='/assets/images/example-monitoring/screenshot-5-notifications.png'/>
+</p><p><em>Notification settings for Slack or Discord webhooks. Alerts fire when a site flips between up and down.</em>
+</p><p>It follows the folder layout: SQL files for persistence, a thin Python service, HTML templates with HTMX, a JS worker for checks. Nothing clever. That's the point.
+</p><p>Then I asked for a rewrite: <a target='_blank' href='https://github.com/mliezun/example-monitoring/pull/1'>PR #1 migrates the service layer to Rust</a>. Same queries, same templates, same routes. The diff is mostly <span class='single-quote'>service/</span>. That's the workflow I expect to become routine.
+</p><h2>What the job looks like
+</h2><p>
+</p><p>Software engineering won't disappear. It will shift.
+</p><p><strong>Design and boundaries</strong> matter more. Where do you draw the line between layers? What's the interface between <span class='single-quote'>service/</span> and <span class='single-quote'>db/</span>? What must never be agent-generated without review?
+</p><p><strong>Verification</strong> matter more. Karpathy's line keeps ringing true: <a target='_blank' href='https://x.com/karpathy/status/1990116666194456651'>Software 2.0 automates what you can verify</a>. Integration tests, static analysis, supply-chain scanning, manual review of migrations. These become the job, not typing boilerplate.
+</p><p><strong>Rewrites</strong> get cheaper. The <a target='_blank' href='https://github.com/oven-sh/bun/pull/30412'>Bun rewrite</a>, <a target='_blank' href='https://github.com/vercel-labs/zero'>Vercel's Zero sync engine</a>, and the flood of <a target='_blank' href='https://lucumr.pocoo.org/2026/3/5/theseus/'>"slop forks"</a> are early signals. Teams that locked everything into one framework will pay a migration tax. Teams that kept SQL, HTML, and HTTP contracts explicit will swap languages the way we swap dependencies today.
+</p><p><strong>Security</strong> gets harder on both sides. Tools like <a target='_blank' href='https://github.com/KeygraphHQ/shannon'>Shannon</a> automate pentesting. Agents find bugs faster; so do attackers. Smaller surface area, fewer dependencies, boring infrastructure, not because boring is virtuous, but because boring is auditable.
+</p><p>I don't think we'll all be prompt engineers writing natural language specs. I think we'll be engineers who <strong>architect for change</strong>: pick stable boundaries, keep the database and tests human-owned, let agents churn through service implementations, and treat a rewrite as a Tuesday instead of a quarter-long project.
+</p><p>That's the shape of the stack I'm betting on. Not the flashiest one. The one you can replace piece by piece while the world accelerates around it.
+</p><h2>A good time to go deeper
+</h2><p>
+</p><p>It's a good time to gain deeper knowledge. Take <a target='_blank' href='https://asgi.readthedocs.io/en/latest/specs/main.html'>ASGI</a>, the protocol mentioned earlier in this post. Go learn how frameworks were built on top of it, then prompt your AI to build something similar, adjusted to your needs.
+</p><p>What made frameworks valuable wasn't just convenience. It was the shared understanding workers had about them, which made it easier to switch from one company to another. Django meant something. Rails meant something. You could join a team and be productive quickly because everyone knew the same conventions.
+</p><p>That shared vocabulary is shifting. What's important now is being good at harnessing agents to build in any language, and at designing higher-level abstractions that stay stable while implementations shift underneath.
+</p><h2>Further reading
+</h2><p>
+</p><ul><li><a target='_blank' href='https://kabir.au/blog/the-ctf-scene-is-dead'>The CTF scene is dead</a>, Kabir Ahmed
+</li><li><a target='_blank' href='https://daniel.haxx.se/blog/2026/04/22/high-quality-chaos/'>High quality chaos</a>, Daniel Stenberg
+</li><li><a target='_blank' href='https://lucumr.pocoo.org/2026/3/5/theseus/'>Theseus / slop forks</a>, Armin Ronacher
+</li><li><a target='_blank' href='https://medium.com/@NMitchem/if-ai-writes-your-code-why-use-python-bf8c4ba1a055'>If AI writes your code, why use Python?</a>, Noah Mitchem
+</li><li><a target='_blank' href='https://www.youtube.com/watch?v=RjfbvDXpFls'>Agentic AI harness (YouTube)</a>
+</li><li><a target='_blank' href='https://www.databricks.com/blog/introducing-omnigent-meta-harness-combine-control-and-share-your-agents'>Omnigent meta-harness</a>, Databricks
+</li></ul></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script><script defer="" src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script><script defer="" src="/assets/js/mermaid-init.js"></script></body></html>

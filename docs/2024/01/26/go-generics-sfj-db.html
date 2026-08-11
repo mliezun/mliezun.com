@@ -1,0 +1,115 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Using Go Generics to create a Single file JSON DB</title><meta name="generator" content="Custom"/><meta property="og:title" content="Using Go Generics to create a Single file JSON DB"/><meta property="og:locale" content="en_US"/><meta name="description" content="Storing your data in a single json file can be useful when there isn't much state that needs to be tracked. In this post we leverage Go's generics to implement a simple JSON DB."/><meta property="og:description" content="Storing your data in a single json file can be useful when there isn't much state that needs to be tracked. In this post we leverage Go's generics to implement a simple JSON DB."/><meta name="keywords" content="go,json,db,generics"/><link rel="canonical" href="https://mliezun.com/2024/01/26/go-generics-sfj-db.html"/><meta property="og:url" content="https://mliezun.com/2024/01/26/go-generics-sfj-db.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Using Go Generics to create a Single file JSON DB"/><meta name="twitter:description" content="Storing your data in a single json file can be useful when there isn't much state that needs to be tracked. In this post we leverage Go's generics to implement a simple JSON DB."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Storing your data in a single json file can be useful when there isn't much state that needs to be tracked. In this post we leverage Go's generics to implement a simple JSON DB.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2024/01/26/go-generics-sfj-db.html","headline":"Using Go Generics to create a Single file JSON DB","dateModified":"2024-01-26T00:00:00-03:00","datePublished":"2024-01-26T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2024/01/26/go-generics-sfj-db.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Using Go Generics to create a Single file JSON DB
+</h1><p class="article-byline"><span class="byline-date">2024-01-26</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">go,json,db,generics</span></p><p>
+</p><p>Let's start with an example use case: you have a multitenant web server that serves pages for various customers, you can know which page to serve based on <span class='single-quote'>Host</span> header in the request.
+</p><p>You can track each site in a struct like this:
+</p><pre class="triple-quote go">type Site struct {
+    Name    string  `json:"name"`
+    Host    string  `json:"host"`
+}
+</pre><p>
+</p><p>Your <span class='single-quote'>sites.json</span> file could be something like this:
+</p><pre class="triple-quote json">{
+    "www.example.com": {
+        "name": "Example",
+        "host": "www.example.com"
+    }
+}
+</pre><p>
+</p><p>Which can be opened as a db:
+</p><pre class="triple-quote go">sitesdb, err := sfjdb.Open[map[string]Site]("./sites.json")
+</pre><p>
+</p><p>Then you can simply get the content of the json file and validate requests:
+</p><pre class="triple-quote go">func handle(w http.ResponseWriter, req *http.Request) {
+    sites := sitesdb.View()
+    host := req.Header["Host"][0]
+    if site, ok := sites[host]; ok {
+        // Render sites that are stored in DB
+        renderSite(w, req, site)
+    } else {
+        w.WriteHeader(404)
+    }
+}
+</pre><p>
+</p><h2>Implementation
+</h2><p>
+</p><p>Thanks to Go generics and built-in json Marshaling/Unmarshaling this is quite easy to build:
+</p><pre class="triple-quote go">type DB[T any] struct {
+	rw       sync.RWMutex
+	data     T
+	filepath string
+}
+</pre><p>
+</p><p>We have a <span class='single-quote'>DB</span> struct to keep track of the file, data and a <span class='single-quote'>RW</span> mutex.
+</p><p>Then we can easily read data from a local file:
+</p><pre class="triple-quote go">// Load loads data from file.
+func (db *DB[T]) Load() error {
+	db.rw.Lock()
+	defer db.rw.Unlock()
+	content, err := os.ReadFile(db.filepath)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(content, &amp;db.data)
+}
+</pre><p>
+</p><p>Each time we use the data in the DB we make a copy, to avoid modifying some attributes via pointers by mistake.
+</p><pre class="triple-quote go">func objcopy[T any](obj T) *T {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+	newobj := new(T)
+	if err := json.Unmarshal(data, newobj); err != nil {
+		panic(err)
+	}
+	return newobj
+}
+
+
+// View returns a copy of the data.
+func (db *DB[T]) View() T {
+	db.rw.RLock()
+	defer db.rw.RUnlock()
+	return *objcopy(db.data)
+}
+</pre><p>
+</p><p>We can also save a new state in case we modified something (e.g. added a new site to our list).
+</p><pre class="triple-quote go">// Save saves a copy of the data as plain json in the file.
+func (db *DB[T]) Save(data T) error {
+	db.rw.Lock()
+	defer db.rw.Unlock()
+	db.data = *objcopy[T](data)
+	content, err := json.Marshal(db.data)
+	if err != nil {
+		return err
+	}
+	return WriteFile(db.filepath, content, 0644)
+}
+</pre><p>
+</p><p>You can get the <span class='single-quote'>WriteFile</span> function <a target='_blank' href='https://github.com/tailscale/tailscale/blob/main/atomicfile/atomicfile.go'>here</a>.
+</p><p>This function writes the file atomically, which means it is successfully written or not written at all.
+</p><p>
+</p><p>Finally we have to implement <span class='single-quote'>Open</span> to instantiate our DB:
+</p><pre class="triple-quote go">// Open opens a json file as a database.
+func Open[T any](filepath string) (db *DB[T], err error) {
+	db = &amp;DB[T]{filepath: filepath}
+	if err := db.Load(); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+</pre><p>
+</p><h2>In praise of Go generics
+</h2><p>
+</p><p>At the beginning I was a little sad about generics, Go, the simple language, was in the end becoming a huge complex beast. But overall if you don't over-abuse generics it feels natural and easy to use/understand.
+</p><p>This still feels like the good old Go, but just a bit more power in the right way.
+</p><p>If you wish to use this in your project you can just import it from <a target='_blank' href='https://github.com/mliezun/sfj-db'>https://github.com/mliezun/sfj-db</a>.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

@@ -1,0 +1,211 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Writing your own C malloc and free</title><meta name="generator" content="Custom"/><meta property="og:title" content="Writing your own C malloc and free"/><meta property="og:locale" content="en_US"/><meta name="description" content="Challenge for writing your own implementation of malloc and free."/><meta property="og:description" content="Challenge for writing your own implementation of malloc and free."/><meta name="keywords" content="malloc,free,tutorial"/><link rel="canonical" href="https://mliezun.com/2020/04/11/custom-malloc.html"/><meta property="og:url" content="https://mliezun.com/2020/04/11/custom-malloc.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Writing your own C malloc and free"/><meta name="twitter:description" content="Challenge for writing your own implementation of malloc and free."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Challenge for writing your own implementation of malloc and free.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/04/11/custom-malloc.html","headline":"Writing your own C malloc and free","dateModified":"2020-04-11T00:00:00-03:00","datePublished":"2020-04-11T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/04/11/custom-malloc.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Writing your own C malloc and free
+</h2><p class="article-byline"><span class="byline-date">2020-04-11</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">malloc,free,tutorial</span></p><div>
+
+</div><h3>Challenge
+</h3><div>
+This challenge comes from the book Crafting Interpreters by Bob Nystrom. And can be found in <a href="http://www.craftinginterpreters.com/chunks-of-bytecode.html#challenges">Chapter 14 - Challenge 3</a>.
+
+The challenge goes:
+
+> You are allowed to call malloc() once, at the beginning of the interpreters execution, to allocate a single big block of memory which your reallocate() function has access to. It parcels out blobs of memory from that single region, your own personal heap. Its your job to define how it does that.
+
+
+</div><p>Check out this 
+<a href="https://xeiaso.net/blog/anything-message-queue" target="_blank">comparison of malloc() to S3.</a></p><h3>Solution
+</h3><div>
+As stated in the challenge I'll be using a big chunk of _contiguous_ memory. The main idea of my solution is to store the blocks of memory in the array prepending a header with metadata.
+
+<pre class="triple-quote ">
+ _______________________________________________
+|head_0|block_0 ... |head_1|block_1    ...      |
+ 
+</pre>
+
+The structure of the header is pretty similar to that of a linked list.
+
+<pre class="triple-quote c">
+struct block_meta
+{
+    size_t size;
+    struct block_meta *next;
+    int free;
+};
+
+#define META_SIZE sizeof(struct block_meta)
+</pre>
+
+It stores the size of the block, a pointer to the next block and a flag to mark whether it's free or not.
+
+Then, a function to traverse the list of blocks and find if there is any freed block is needed:
+
+<pre class="triple-quote c">
+void *first_block = NULL;
+
+struct block_meta *find_free_block(struct block_meta **last, size_t size)
+{
+    struct block_meta *current = first_block;
+    while (current &amp;&amp; !(current->free &amp;&amp; current->size >= size))
+    {
+        *last = current;
+        current = current->next;
+    }
+    return current;
+}
+</pre>
+
+This function receives a double pointer to a block_meta struct called <span class="single-quote">last</span> that at the end of the execution should be pointing to the last node of the list and a size_t variable that indicates the minimum size that the block needs to be.
+
+
+</div><h5>Memory initialization
+</h5><div>
+Two functions are needed to handle the big chunk of memory, one to initialize and the other to free it.
+
+<pre class="triple-quote c">
+void initMemory();
+void freeMemory();
+</pre>
+
+To implement <span class="single-quote">initMemory</span> I've decided that I would ask for the maximum amount of memory that I could get from the OS.
+
+<pre class="triple-quote c">
+#define MINREQ 0x20000
+
+// Big block of memory
+void *memory = NULL;
+// Position where the last block ends
+size_t endpos = 0;
+
+void initMemory()
+{
+    size_t required = PTRDIFF_MAX;
+    while (memory == NULL)
+    {
+        memory = malloc(required);
+        if (required < MINREQ)
+        {
+            if (memory)
+            {
+                free(memory);
+            }
+            printf("Cannot allocate enough memory\n");
+            exit(ENOMEM);
+        }
+        required &gt;&gt;= 1;
+    }
+}
+
+void freeMemory()
+{
+    free(memory);
+}
+</pre>
+
+As you can see, <span class="single-quote">initMemory</span> starts trying to allocate the maximum amount a memory allowed, and starts to divide that amount by 2 every time the allocation fails. If there isn't at least 128KB of memory available the program crashes with ENOMEM.
+
+Now that we have our chunk of memory ready to go, we can start to start giving blocks away.
+
+<pre class="triple-quote c">
+struct block_meta *request_block(size_t size)
+{
+    struct block_meta *last = NULL;
+    struct block_meta *block = find_free_block(&amp;last, size);
+    if (block)
+    {
+        block->free = 0;
+        return block;
+    }
+    // Append new block to list
+    block = memory + endpos;
+    endpos += META_SIZE + size;
+    if (last)
+    {
+        last->next = block;
+    }
+    else
+    {
+        first_block = block;
+    }
+    block->free = 0;
+    block->next = NULL;
+    block->size = size;
+    return block;
+}
+</pre>
+
+How <span class="single-quote">request_block</span> works:
+
+1. Tries to find a free block with enough space. If there is one, it is set as occupied and returns that block.
+2. If there isn't a free block available. It adds a new block with enough space at the end of <span class="single-quote">memory</span> (the big chunk).
+3. If this is the first call, points the head of the list to the recently created block, else point the last node to the block.
+4. Set the new block as occupied, set the size and next to null. Then return the new block.
+
+With this function, implementing <span class="single-quote">malloc</span> and <span class="single-quote">free</span> is pretty easy:
+
+<pre class="triple-quote c">
+void *my_malloc(size_t size)
+{
+    struct block_meta *block = request_block(size);
+    return block + 1;
+}
+
+void my_free(void *ptr)
+{
+    struct block_meta *block = ptr - META_SIZE;
+    block->free = 1;
+}
+</pre>
+
+To finish the challenge, I have to implement realloc, that is a little bit more tricky.
+
+<pre class="triple-quote c">
+void *my_realloc(void *ptr, size_t size)
+{
+    if (!ptr)
+    {
+        return my_malloc(size);
+    }
+    struct block_meta *block = ptr - META_SIZE;
+    if (block->size >= size)
+    {
+        return block + 1;
+    }
+    uint8_t *newptr = my_malloc(size);
+    size_t i;
+    for (i = 0; i < (block->size < size ? block->size : size); i++)
+    {
+        newptr[i] = ((uint8_t *)ptr)[i];
+    }
+    block->free = 1;
+    return newptr;
+}
+</pre>
+
+How realloc works:
+
+<li>If the pointer to reallocate is null, works just like malloc.</li>
+<li>If the given size is bigger than the prior size, it allocates a bigger block and copies all data from the original block to the new block.</li>
+<li>If the given size is smaller than the prior size, it allocates a smaller block and copies just the data that fits into the smaller block.</li>
+
+
+</div><h3>New challenge
+</h3><div>
+In my implementation I used a linked list where each node holds a pointer to the next, but given that I have control over the _entire_ memory this actualy isn't necessary.
+
+My challenge to you is that you remove the pointer to next from the <span class="single-quote">block_meta</span> struct.
+
+
+</div><h3>Resources
+</h3><div>
+<li>https://danluu.com/malloc-tutorial/</li>
+<li>http://www.craftinginterpreters.com/chunks-of-bytecode.html</li>
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

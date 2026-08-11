@@ -1,0 +1,317 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Playing with Javascript Proxies (getters/setters)</title><meta name="generator" content="Custom"/><meta property="og:title" content="Playing with Javascript Proxies (getters/setters)"/><meta property="og:locale" content="en_US"/><meta name="description" content="In this last post of the year I play with proxies in an attempt to create a Javascript object where changes are appended
+	to a log and can be reverted by deleting the last element of the log using getters and setters."/><meta property="og:description" content="In this last post of the year I play with proxies in an attempt to create a Javascript object where changes are appended
+	to a log and can be reverted by deleting the last element of the log using getters and setters."/><meta name="keywords" content="javscript,proxies,append,log,objects,getter,setter"/><link rel="canonical" href="https://mliezun.com/2021/12/31/playing-with-js.html"/><meta property="og:url" content="https://mliezun.com/2021/12/31/playing-with-js.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Playing with Javascript Proxies (getters/setters)"/><meta name="twitter:description" content="In this last post of the year I play with proxies in an attempt to create a Javascript object where changes are appended
+	to a log and can be reverted by deleting the last element of the log using getters and setters."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"In this last post of the year I play with proxies in an attempt to create a Javascript object where changes are appended
+	to a log and can be reverted by deleting the last element of the log using getters and setters.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2021/12/31/playing-with-js.html","headline":"Playing with Javascript Proxies (getters/setters)","dateModified":"2021-12-31T00:00:00-03:00","datePublished":"2021-12-31T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2021/12/31/playing-with-js.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>Playing with Javascript Proxies (getters/setters)</h2><p class="article-byline"><span class="byline-date">2021-12-31</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">javscript,proxies,append,log,objects,getter,setter</span></p><h3>Overview</h3><div><p>Happy New Year!</p><p>This is my final post for the 2021. This year I didn't post that much, but a lot of work was put into
+				the blog to rewrite it using 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a>.
+I hope everyone has a great 2022 and that next year is much better than the last one.
+</p><p>The inspiration for this blog post comes from the idea of building a tiny db that feels more natural to Javascript.
+All the databases that I've seen make a heavy use of methods like: 
+<span class="single-quote">db.get()</span>, 
+<span class="single-quote">db.put()</span>, 
+<span class="single-quote">db.scan()</span>, 
+<span class="single-quote">db.query()</span>.
+ And many others that I'm sure you have seen.
+I think it would be great to see something like:
+<pre class="triple-quote go">const db = getDb("...")
+// Create new user
+const u = {username: "jdoe", email: "jdoe@example.com", id: 100}
+// Store new user in the database
+db.objects.users[u.username] = u
+// Commit the changes to the database
+db.actions.save()
+</pre></p><p>In this blog post we will be building a much simpler version that stores everything in memory. Each change
+				made to the objects will be stored in a log (called layers) and the final object will be composed of all
+				the small layers present in the log.
+</p></div><h3>Defining a proxy</h3><div><p>We need to implement some generic getters/setters.
+<pre class="triple-quote go">const objects = new Proxy({}, {
+    get: function(obj, prop) {
+        validate(prop, null)
+        // Implementation
+    },
+    set: function(obj, prop, value) {
+        validate(prop, value)
+        // Implementation
+    }
+})
+</pre></p><p>Let's define the validation function. In this case we want the objects to be able to be serialized to JSON.
+<pre class="triple-quote go">
+const validate = (prop, value) => {
+    // Make sure that the property and value are serializable
+    // JSON.stringify throws an error if not serializable
+    const l = {}
+    l[prop] = value
+    JSON.stringify(l)
+    return l
+}
+
+</pre></p><p>This empty proxy will validate that the values and prop are serializable and do nothing else. Now we can start 
+building on top of it.
+</p></div><h3>Building a tree to hold everything together</h3><div><p>We need a root object where we will store all the changes that are applied to an object.
+We will have a sort of tree structure to hold everything together.
+It will look something like this:
+<pre class="triple-quote go">
+              rootObject({})  -> layers([{users: {jdoe: ...}}, {tokens: {tk1: ...}}])
+                    |
+        --------------------------
+        |                        |
+ child(.users{})          child(.tokens{})
+        |                        |
+       ...                      ...
+
+</pre></p><p>The root object contains the layers with all the changes made from the beginning of the existence of the object.
+Each time a property of the root object is accessed a child is returned that internally holds a reference to the root.
+This way we can go through the entire chain of access and be able to reach the stored layers.
+By chain of access I mean the following: <span class="single-quote">objects.users.jdoe.metadata.login.ip</span>.
+As you can see, we need to traverse through many objects to be able to reach the ip field. But the layer that contains
+ the information is only stored in the root, so each child needs to maintain a reference to the parent to be able to reach
+ the root node.
+</p><p>Let's define a simple function to be able to create a new rootObject.
+<pre class="triple-quote go">
+const wrapObject = (parent, key, current) => {
+    const rootObj = {
+        parent: Object.freeze(parent),
+        layers: [Object.freeze({'value': current, 'previous': null})],
+        pushLayer (l) {}, // Push new layer
+        getLayer (ks) {}, // Get layer where information is stored based on given keys
+        getValue (k) {} // Get value that matches given key
+    }
+
+    const rootProxy = {
+        get: function(obj, prop) {
+            validate(prop, null)
+            const val = rootObj.getValue(prop)
+            if (typeof val == 'object') {
+                // If the value is an object we need to have a child instance
+                // with a reference to the parent
+                return wrapObject(rootObj, prop, val).objects
+            }
+            // If the value is other kind like a number or string we can safely return that
+            return val
+        },
+        set: function(obj, prop, value) {
+            const l = validate(prop, value)
+            // Add new layer to the rootObj
+            rootObj.pushLayer({'value': l})
+        }
+    }
+
+    return {
+        actions: {
+            revert () {
+                // Deleting the last layer will revert the changes
+                const pop = rootObj.layers[rootObj.layers.length-1]
+                rootObj.layers.splice(rootObj.layers.length-1, rootObj.layers.length)
+                return pop
+            }
+        },
+        objects: new Proxy({}, rootProxy)
+    }
+}
+
+</pre></p></div><h3>Handling layers</h3><div><p>The layer format:
+<pre class="triple-quote go">
+const layer = {
+    value: {status: 'active'},
+    previous: null // Reference to a previous layer that has the key 'status' in it
+}
+
+</pre>The layers are stored in an array, each layer holds the value and a reference to the previous layer
+ that set a value for the same key (in this case the key was 'status'). Also the layers form a simple
+ linked list through the 'previous' reference. That way we have the entire history of a given key.
+</p><p>We would need a function to be able to tell if an object has a list of nested keys. Trust me for now, you'll see.
+<pre class="triple-quote go">
+const nestedExists = (obj, ks) => {
+    for (let j = 0; j < ks.length; j++) {
+        let k = ks[j];
+        if (!(k in obj)) {
+            return false
+        }
+        obj = obj[k]
+    }
+    return true
+}
+
+</pre>In this function we receive an object and a list of keys, we start accessing the first internal object with the first key
+ and we keep doing the same till we make sure that all the keys are present.
+</p><p>Now we're almost done. Let's define the functions for handling the store and retrieval of layers.
+<pre class="triple-quote go">
+const rootObj = {
+    parent: Object.freeze(parent),
+    layers: [Object.freeze({'value': current, 'previous': null})],
+    pushLayer (l) {
+        // If this is a child object we need to build the entire chain of access
+        // from the bottom up
+        if (parent) {
+            const ll = {}
+            ll[key] = l['value']
+            // Search for a previous layer modifying the same key
+            const previous = parent.getLayer([key])
+            // Tell the parent object to push the new layer
+            parent.pushLayer(Object.freeze({'value': ll, previous}))
+        } else {
+            // We are in the root object, add the layer to the array
+            this.layers.push(Object.freeze(l))
+        }
+    },
+    getLayer (ks) {
+        // Search through the entire list of layers to see if one contains all the keys
+        // that we are looking for. Start from the end of the array (top of the stack)
+        for (let i = this.layers.length - 1; i >= 0; i--) {
+            let v = nestedExists(this.layers[i]['value'], ks)
+            if (v) {
+                return this.layers[i]
+            }
+        }
+        if (parent) {
+            // If we are in a child object, look through all the previous layers
+            // and see if the key we're looking for is contained in one of them.
+            let ll = parent.getLayer([key].concat(ks))
+            while (ll) {
+                let a = nestedExists(ll['value'][key], ks)
+                if (a) {
+                    return Object.freeze({'value': ll['value'][key]})
+                }
+                ll = ll.previous
+            }
+        }
+    },
+    getValue (k) {
+        // Straightforward, get layer and return value
+        const l = this.getLayer([k])
+        if (l) {
+            return Object.freeze(l['value'][k])
+        }
+    }
+}
+
+</pre>That's all we need. We can create a new object and start adding and modifying properties. Each change will be added
+ to the end of the log and worked out when a property is accessed.
+</p></div><h3>Wrapping Up</h3><div><p>Let's try the final result. The source code is loaded in this page, so you can open a dev console in the browser and
+ try for yourself.
+<pre class="triple-quote go">
+const store = wrapObject(null, null, {})
+
+// Create new user
+const user = {username: 'jdoe', email: 'jdoe@example.com', name: 'John Doe', id: 100}
+
+// Add new user
+store.objects.users = {}
+store.objects.users[user.username] = user
+
+// Print user email
+console.log(store.objects.users.jdoe.email)
+
+// Change user email and print
+store.objects.users.jdoe.email = 'jdoe2@example.com'
+console.log(store.objects.users.jdoe.email)
+
+// Revert last change and print email again
+store.actions.revert()
+console.log(store.objects.users.jdoe.email)
+
+</pre></p><p>That's it for now. We defined a Javascript object that contains the entire history of changes that were made to itself.
+And at any point we can revert the changes and go back to a previous state.
+Everything is stored in an array and is easily serializable.
+If we wanted to take this to the next level, each change could be written to a persistence storage (s3, sqlite, mysql, ...)
+</p><p>The full source code is available in a
+<a target="_blank" href="https://gist.github.com/mliezun/5946c8af80e3747519175027579414fb">public gist</a>.
+</p></div><script>
+const validate = (prop, value) => {
+    // Make sure that the property and value are serializable
+    // JSON.stringify throws an error if not serializable
+    const l = {}
+    l[prop] = value
+    JSON.stringify(l)
+    return l
+}
+
+
+const nestedExists = (obj, ks) => {
+    for (let j = 0; j < ks.length; j++) {
+        let k = ks[j];
+        if (!(k in obj)) {
+            return false
+        }
+        obj = obj[k]
+    }
+    return true
+}
+
+
+const wrapObject = (parent, key, current) => {
+    const rootObj = {
+        parent: Object.freeze(parent),
+        layers: [Object.freeze({'value': current, 'previous': null})],
+        pushLayer (l) {
+            if (parent) {
+                const ll = {}
+                ll[key] = l['value']
+                const previous = parent.getLayer([key])
+                parent.pushLayer(Object.freeze({'value': ll, previous}))
+            } else {
+                this.layers.push(Object.freeze(l))
+            }
+        },
+        getLayer (ks) {
+            for (let i = this.layers.length - 1; i >= 0; i--) {
+                let v = nestedExists(this.layers[i]['value'], ks)
+                if (v) {
+                    return this.layers[i]
+                }
+            }
+            if (parent) {
+                let ll = parent.getLayer([key].concat(ks))
+                while (ll) {
+                    let a = nestedExists(ll['value'][key], ks)
+                    if (a) {
+                        return Object.freeze({'value': ll['value'][key]})
+                    }
+                    ll = ll.previous
+                }
+            }
+        },
+        getValue (k) {
+            const l = this.getLayer([k])
+            if (l) {
+                return Object.freeze(l['value'][k])
+            }
+        }
+    }
+
+    const rootProxy = {
+        get: function(obj, prop) {
+            validate(prop, null)
+            const val = rootObj.getValue(prop)
+            if (typeof val == 'object') {
+                return wrapObject(rootObj, prop, val).objects
+            }
+            return val
+        },
+        set: function(obj, prop, value) {
+            const l = validate(prop, value)
+            rootObj.pushLayer({'value': l})
+        }
+    }
+
+    return {
+        actions: {
+            revert () {
+                const pop = rootObj.layers[rootObj.layers.length-1]
+                rootObj.layers.splice(rootObj.layers.length-1, rootObj.layers.length)
+                return pop
+            }
+        },
+        objects: new Proxy({}, rootProxy)
+    }
+}
+
+</script></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

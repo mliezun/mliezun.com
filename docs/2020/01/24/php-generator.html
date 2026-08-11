@@ -1,0 +1,211 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Reinventing the Wheel: PHP Generators</title><meta name="generator" content="Custom"/><meta property="og:title" content="Reinventing the Wheel: PHP Generators"/><meta property="og:locale" content="en_US"/><meta name="description" content="Attempt of a lunatic to recreate functionalities that a language already has using the same language, and failing."/><meta property="og:description" content="Attempt of a lunatic to recreate functionalities that a language already has using the same language, and failing."/><meta name="keywords" content="php, generators"/><link rel="canonical" href="https://mliezun.com/2020/01/24/php-generator.html"/><meta property="og:url" content="https://mliezun.com/2020/01/24/php-generator.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Reinventing the Wheel: PHP Generators"/><meta name="twitter:description" content="Attempt of a lunatic to recreate functionalities that a language already has using the same language, and failing."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Attempt of a lunatic to recreate functionalities that a language already has using the same language, and failing.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/01/24/php-generator.html","headline":"Reinventing the Wheel: PHP Generators","dateModified":"2020-01-24T00:00:00-03:00","datePublished":"2020-01-24T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/01/24/php-generator.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Reinventing the Wheel: PHP Generators
+</h2><p class="article-byline"><span class="byline-date">2020-01-24</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">php, generators</span></p><div>
+
+</div><h3>First things first. How does a generator work?
+</h3><div>
+
+</div><h4>Starting back at C
+</h4><div>
+Let's create a function that each time we call it we get the next number of the fibonacci sequence.
+
+<pre class="triple-quote c">
+int fibonacci()
+{
+    static int a = 0;
+    static int b = 1;
+    int aux = b;
+    b = a + b;
+    a = aux;
+    return a;
+}
+</pre>
+
+If we call fibonacci(), the first time we'll get 1, the second time 1, the third 2, the fourth 3, and so on...
+
+This happens because we declared variables <span class="single-quote">a, b</span> to be static. This means that they maintain the value after the function returns. Normally, what happens (if we don't declare a variable as static) is that the variables inside the function don't maintain the values of the last execution.
+
+
+</div><h4>First generator for PHP
+</h4><div>
+The equivalent function in PHP is pretty similar to C's approach.
+
+<pre class="triple-quote php">
+
+
+function fibonacci()
+{
+    static $a = 0;
+    static $b = 1;
+    $aux = $b;
+    $b = $a + $b;
+    $a = $aux;
+    return $a;
+}
+
+$out = [];
+
+for ($i = 1; $i <= 10; $i++) {
+    $out[] = fibonacci();
+}
+
+echo implode(', ', $out) . "\n";
+
+/*
+Output: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55
+*/
+</pre>
+
+Let's compare this to the <span class="single-quote">real</span> PHP version using <span class="single-quote">yield</span>.
+
+<pre class="triple-quote php">
+
+
+function fibonacci($N)
+{
+    $a = 0;
+    $b = 1;
+    for ($i = 0; $i < $N; $i++) {
+        $aux = $b;
+        $b = $a + $b;
+        $a = $aux;
+        yield $a;
+    }
+}
+
+$out = [];
+
+foreach (fibonacci(10) as $fib) {
+    $out[] = $fib;
+}
+
+echo implode(', ', $out) . "\n";
+
+/*
+Output: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55
+*/
+</pre>
+
+
+</div><h4>Creating a custom version of PHP <span class="single-quote">yield</span>
+</h4><div>
+This is my own version using the library parallel and channels (probably uses yield internally).
+
+<pre class="triple-quote php">
+
+
+class MyGenerator implements Iterator
+{
+    private $chan;
+    private $current;
+    private $iteratorFn;
+    private $runtime;
+    private $key = -1;
+    private $valid = true;
+
+    public function __construct($iteratorFn)
+    {
+        $this->iteratorFn = $iteratorFn;
+        $this->runtime = new \parallel\Runtime();
+        $channel = new \parallel\Channel();
+
+        $this->runtime->run(function() use ($iteratorFn, $channel) {
+            $iteratorFn(function ($val) use ($channel) {
+                $channel->send($val);
+            });
+            $channel->close();
+        });
+
+        $this->chan = $channel;
+        $this->next();
+    }
+
+    public function current()
+    {
+        return $this->current;
+    }
+
+    public function next()
+    {
+        try {
+            ++$this->key;
+            $val = $this->chan->recv();
+            $this->current = $val;
+        } catch (\parallel\Channel\Error\Closed $e) {
+            $this->valid = false;
+        }
+        return $this->current;
+    }
+
+    public function key() {return $this->key;}
+    public function valid() {return $this->valid;}
+    public function rewind() {}
+}
+
+
+function fibonacci($N)
+{
+    return new MyGenerator(function ($yield) use ($N) {
+        $a = 0;
+        $b = 1;
+        for ($i = 0; $i < $N; $i++) {
+            $aux = $b;
+            $b = $a + $b;
+            $a = $aux;
+            $yield($a);
+        }
+    });
+}
+
+$out = [];
+
+foreach (fibonacci(10) as $fib) {
+    $out[] = $fib;
+}
+
+echo implode(', ', $out) . "\n";
+</pre>
+
+
+</div><h4>Performance comparison: PHP vs Custom
+</h4><div>
+
+</div><h5>Tested code
+</h5><div>
+<pre class="triple-quote php">
+for ($i = 0; $i < 1000; ++$i) {
+    foreach (fibonacci(100) as $fib) {
+        $out[] = $fib;
+    }
+}
+</pre>
+
+
+</div><h5><span class="single-quote">yield</span> version
+</h5><div>
+<pre class="triple-quote ">
+real    0m0,083s
+user    0m0,059s
+sys     0m0,023s
+</pre>
+
+
+</div><h5><span class="single-quote">MyGenerator</span> version
+</h5><div>
+<pre class="triple-quote ">
+real    0m2,138s
+user    0m1,426s
+sys     0m1,363s
+</pre>
+
+So, it's aproximately 26 times slower :-)
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

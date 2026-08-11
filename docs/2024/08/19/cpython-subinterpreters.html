@@ -1,0 +1,244 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Finding and fixing a bug in Python subinterpreters</title><meta name="generator" content="Custom"/><meta property="og:title" content="Finding and fixing a bug in Python subinterpreters"/><meta property="og:locale" content="en_US"/><meta name="description" content="Lately, I've been working with Python C-API. I wanted to use subinterpreters with their own GIL to unlock the performance gains promised by being able to execute many threads in parallel which was not possible before Python 3.12."/><meta property="og:description" content="Lately, I've been working with Python C-API. I wanted to use subinterpreters with their own GIL to unlock the performance gains promised by being able to execute many threads in parallel which was not possible before Python 3.12."/><meta name="keywords" content="python,compiler,caddy,go,programming,c,subinterpreters,gil"/><link rel="canonical" href="https://mliezun.com/2024/08/19/cpython-subinterpreters.html"/><meta property="og:url" content="https://mliezun.com/2024/08/19/cpython-subinterpreters.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Finding and fixing a bug in Python subinterpreters"/><meta name="twitter:description" content="Lately, I've been working with Python C-API. I wanted to use subinterpreters with their own GIL to unlock the performance gains promised by being able to execute many threads in parallel which was not possible before Python 3.12."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Lately, I've been working with Python C-API. I wanted to use subinterpreters with their own GIL to unlock the performance gains promised by being able to execute many threads in parallel which was not possible before Python 3.12.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2024/08/19/cpython-subinterpreters.html","headline":"Finding and fixing a bug in Python subinterpreters","dateModified":"2024-08-19T00:00:00-03:00","datePublished":"2024-08-19T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2024/08/19/cpython-subinterpreters.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><p>
+</p><h1>Finding and fixing a bug in Python subinterpreters
+</h1><p class="article-byline"><span class="byline-date">2024-08-19</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">python,compiler,caddy,go,programming,c,subinterpreters,gil</span></p><p>
+</p><h3>tldr
+</h3><p>
+</p><ul><li>Filed an <a target='_blank' href='https://github.com/python/cpython/issues/117482'>issue</a> in CPython.
+</li><li>Sent a <a target='_blank' href='https://github.com/python/cpython/pull/117660'>PR</a>. 
+</li><li>My code was garbage and was not merged, but helped to get the issue fixed.
+</li></ul><h2>Backstory
+</h2><p>
+</p><p>Lately, I've been working with Python C-API. I wanted to use subinterpreters with their own GIL to unlock the performance gains promised by being able to execute many threads in parallel which was not possible before Python 3.12.
+</p><p>The reason is that I've been building a Caddy web server plugin called: <a target='_blank' href='https://github.com/mliezun/caddy-snake'>Caddy Snake</a>.
+</p><p>The plugin lets users embed a Python interpreter and serve requests directly from <a target='_blank' href='https://caddyserver.com'>Caddy</a>.
+</p><p>Caddy is written in Go, and to interact with Python I had to use CGO, a compatibility layer that makes it easy to call C functions from Go.
+</p><p>To improve performance I wanted to use the new feature of having separate GIL per subinterpreter so requests could be served by many threads at the same time.
+</p><p>Today I saw a <a target='_blank' href='https://izzys.casa/2024/08/463-python-interpreters/'>great blogpost</a> about finding a bug in subinterpreters and that inspired me to write about my experience.
+</p><p>
+</p><h2>The issue
+</h2><p>
+</p><p>I started <a target='_blank' href='https://github.com/mliezun/caddy-snake/pull/9/files'>coding up</a> a basic implementation to see if I could serve simple requests from subinterpreters.
+</p><p>From the get go I found that requests were failing in Python version 3.12 but working for previous versions thanks to CI tests.
+</p><p>The failure was constrained to a C function where the HTTP status code was being converted from string to int: <span class='single-quote'>strtol(statusCode)</span>.
+</p><p>By printing the content of the <span class='single-quote'>statusCode</span> variable I found the following difference.
+</p><p>In main interpreter:
+</p><pre class="triple-quote ">200
+</pre><p>
+</p><p>In a subinterpreter:
+</p><pre class="triple-quote text">&lt;HttpStatusCode.OK: 200&gt;
+</pre><p>
+</p><p>I managed to track down the enum that was causing this. Then I crafted some code to try to reproduce the error in a standard Python interpreter.
+</p><p>I came up with this:
+</p><pre class="triple-quote python">import _xxsubinterpreters as interpreters
+
+
+script = """from enum import _simple_enum, IntEnum
+
+@_simple_enum(IntEnum)
+class MyEnum:
+    DATA = 1
+    
+print(str(MyEnum.DATA))
+"""
+
+exec(script)
+# Output: 1
+
+interp_id = interpreters.create(isolated=False)
+interpreters.run_string(interp_id, script)
+# Output: &lt;MyEnum.DATA: 1&gt;, Expected: 1
+</pre><p>
+</p><p>That piece of code executes the same python code in both the main interpreter and a freshly created subinterpreter. The output should be the same, but it's not. The problem was independent of running with a separate GIL or with the same GIL.
+</p><p>Checking the <span class='single-quote'>__str__</span> methods I could see that they were clearly different.
+</p><p>In main interpreter:
+</p><pre class="triple-quote python">...
+print(MyEnum.DATA.__str__)
+# Output: &lt;method-wrapper '__repr__' of MyEnum object at 0x7f9a09a2e910&gt;
+</pre><p>
+</p><p>In subinterpreter:
+</p><pre class="triple-quote python">...
+print(MyEnum.DATA.__str__)
+# Output: &lt;method-wrapper '__str__' of MyEnum object at 0x7f9a099a5e90&gt;
+</pre><p>
+</p><p>In the main interpreter the method wraps <span class='single-quote'>__repr__</span>.
+In the subinterpreter it wraps <span class='single-quote'>__str__</span>.
+</p><p>At this point I couldn't believe what I was looking at. When your program has a bug you always assume is your fault, it's rare to see the case where the problem is in the INTERPRETER.
+</p><p>But to my own disbelief I had found a problem with the CPython implementation.
+</p><h2>Doing my homework
+</h2><p>
+</p><p>After that I decided that I was gonna do the right thing: file an issue in Github telling what I just witnessed.
+</p><p>First thing first: read the guide on <a target='_blank' href='https://devguide.python.org/#contributing'>how to contribute to python</a>.
+</p><p>This is what you should always do when contributing to a project because you might find that your problem is actually not worth reporting or that it was already solved in the <span class='single-quote'>main</span> development branch.
+</p><p>I made sure to test with all supported Python versions <span class='single-quote'>3.8, 3.9, 3.10, 3.11, 3.12, 3.13</span> and in both Linux and macOS.
+</p><p>The problem was only present in 3.12 and 3.13, after subinterpreters with separate GIL were introduced.
+</p><p>
+</p><h2>The community is awesome
+</h2><p>
+</p><p>In less than 1 hour and a half of posting the issue I got a response from a member of the Python Triage Team: "Bisected to <a target='_blank' href='https://github.com/python/cpython/commit/de64e7561680fdc5358001e9488091e75d4174a3'>de64e75</a>".
+</p><p>I thought to myself: "that is awesome, this is happening so fast!".
+</p><p>Then others pointed out that you could reproduce it with a shorter script:
+</p><pre class="triple-quote python">import _xxsubinterpreters as interpreters
+
+script = """print(int.__str__)"""
+
+
+exec(script)
+# Output: &lt;slot wrapper '__str__' of 'object' objects&gt;
+
+interp_id = interpreters.create()
+interpreters.run_string(interp_id, script)
+# Output: &lt;slot wrapper '__str__' of 'int' objects&gt;
+</pre><p>
+</p><p>Having the exact commit where this problem was introduced and a concise way of seeing what the underlying problem is, I decided to give it a try to fix the issue myself. Diving into the CPython codebase.
+</p><h2>Diving into CPython
+</h2><p>
+</p><p>The commit where the problem was introduced <a target='_blank' href='https://github.com/python/cpython/commit/de64e7561680fdc5358001e9488091e75d4174a3'>de64e75</a> has 185 additions and 86 deletions, and changes only 5 files.
+</p><p>If you take a look at it the most suspicious one is <span class='single-quote'>typeobject.c</span>, you can see that it's changing some behavior in the MRO: Method Resolution Order. Which is the way methods are "inherited" from one class to another in Python.
+</p><p>I thought that was related because in the subinterpreter the <span class='single-quote'>int</span> class inherits the method
+ <span class='single-quote'>__str__</span> instead of 
+ <span class='single-quote'>__repr__</span>. That was not the real issue, but I was correct about the file where the problem was.
+</p><p>Debugging was done in the good old fashioned way, adding print statements all over the place.
+</p><p>With my printing mechanism I managed to find out that the function that creates those <span class='single-quote'>&lt;slot wrapper ...&gt;</span> objects is called
+ <span class='single-quote'>type_ready()</span>.
+</p><p>That slot wrapper is a function that calls code from a type-slot. For example the <span class='single-quote'>int</span> type defines a slot called 
+<span class='single-quote'>tp_str</span>. That slot is a C function that knows how to convert the object into a string. That C function is wrapped into a Python function which is executed when you do 
+<span class='single-quote'>str(5)</span>.
+</p><p>I could see that <span class='single-quote'>type_ready()</span> was called the first time from the main interpreter, and the second time from a subinterpreter, but this time it added more stuff.
+</p><p>One would expect that <span class='single-quote'>type_ready()</span> gives the same result whether executed from a subinterpreter or from the main interpreter. The builtin types (
+    <span class='single-quote'>int</span>, 
+    <span class='single-quote'>str</span>, 
+    <span class='single-quote'>float</span>, 
+    <span class='single-quote'>bool</span>, ...) should be the same in all cases.
+</p><p>Another group of changes in the <span class='single-quote'>typeobject.c</span> file was a lot of functions that obtain attributes from a builtin type, for example 
+<span class='single-quote'>lookup_tp_dict()</span>:
+</p><pre class="triple-quote C">static inline PyObject *
+lookup_tp_dict(PyTypeObject *self)
+{
++   if (self->tp_flags &amp; _Py_TPFLAGS_STATIC_BUILTIN) {
++       PyInterpreterState *interp = _PyInterpreterState_GET();
++       static_builtin_state *state = _PyStaticType_GetState(interp, self);
++       assert(state != NULL);
++       return state->tp_dict;
++   }
+    return self->tp_dict;
+}
+</pre><p>
+</p><p>This function is obtaining the <span class='single-quote'>tp_dict</span> property from a type. Which is a dictionary that stores attributes/methods of the class.
+</p><p>In this case the entire if-statement was added. If you take a closer look you can infer what's happening. Before we just obtained the value by doing <span class='single-quote'>self->tp_dict</span>. 
+Now, if it's a builtin type, we read the value from the interpreter state <span class='single-quote'>state->tp_dict</span>.
+</p><p>With this information I started to dig deeper to see if I could find the exact place where the extra attributes were being added.
+</p><p>Taking <span class='single-quote'>int.__str__</span> as an example to see what was going on:
+</p><p><ol>
+<li> The <span class='single-quote'>type_ready()</span> function gets executed as part of the main interpreter initialization process.</li>
+<li> The function starts "readying" the <span class='single-quote'>int</span> type: 
+<span class='single-quote'>tp_dict</span> gets filled by 
+<span class='single-quote'>type_ready_fill_dict()</span>, one of the thing this function does is lookup which slots are <em>not empty</em> and add them to the dict, for 
+<span class='single-quote'>int</span> the 
+<span class='single-quote'>tp_str</span> slot is empty.</li>
+<li> After that, <span class='single-quote'>type_ready_inherit()</span> gets called, and copies the 
+<span class='single-quote'>tp_str</span> slot from object to int.</li>
+<li> The init process for the main interpreter finishes and we're ready to start with the second interpreter.</li>
+<li> In this case, the <span class='single-quote'>tp_str</span> slot is not empty for 
+<span class='single-quote'>int</span>, it was filled by step 3. So it gets added to the dict by 
+<span class='single-quote'>type_ready_fill_dict()</span>.</li>
+<li> The program continues and we see different behavior depending on which interpreter we run.</li>
+</ol>
+</p><p>The problem here is that inside <span class='single-quote'>type_ready()</span> we expect 
+<span class='single-quote'>type_ready_fill_dict()</span> to be called before 
+<span class='single-quote'>type_ready_inherit()</span>. Which is true for the main interpreter but not for the subinterpreter. Also, this is caused because all the slots in 
+<span class='single-quote'>int</span> are shared except for 
+<span class='single-quote'>tp_dict</span> which is stored in each interpreter.
+</p><p>
+</p><h3>Summary
+</h3><p>
+</p><p>To summarize the problem: <span class='single-quote'>type_ready()</span> didn't receive a "clean" type. It was receiving a type with slots partially filled.
+</p><p>Some slots were filled because they were shared among interpreters, others like <span class='single-quote'>tp_dict</span> were not shared. That caused inconsistencies between executions of 
+<span class='single-quote'>type_ready()</span>.
+</p><p>
+</p><h2>The solution?
+</h2><p>
+</p><p>Given my lack of experience working in the CPython codebase I decided that the simplest solution was to make a quick and dirty solution.
+</p><p>My solution was to check if <span class='single-quote'>type_ready()</span> was being called from a subinterpreter and in that case cleanup the base type so it looked the same as in the main interpreter.
+</p><p>It boils down to adding this function:
+</p><pre class="triple-quote C">static int
+fix_builtin_slot_wrappers(PyTypeObject *self, PyInterpreterState *interp)
+{
+    assert(self->tp_flags &amp; _Py_TPFLAGS_STATIC_BUILTIN);
+    assert(!_Py_IsMainInterpreter(interp));
+
+    // Getting subinterpreter state
+    managed_static_type_state *state = _PyStaticType_GetState(interp, self);
+    assert(state != NULL);
+
+    // Getting main interpreter state
+    PyInterpreterState *main_interp = _PyInterpreterState_Main();
+    managed_static_type_state *main_state = _PyStaticType_GetState(main_interp, self);
+    assert(main_state != NULL);
+
+    // Check wich attributes the type has in subinterpreter and it doesn't have
+    // in the main interpreter. Store them in keys_to_remove.
+    int res = -1;
+    PyObject* keys_to_remove = PyList_New(0);
+    if (keys_to_remove == NULL) {
+        goto finally;
+    }
+    Py_ssize_t i = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(state->tp_dict, &amp;i, &amp;key, &amp;value)) {
+        if (!PyDict_Contains(main_state->tp_dict, key)) {
+            if (PyList_Append(keys_to_remove, key) &lt; 0) {
+                goto finally;
+            }
+        }
+    }
+
+    // Go through keys_to_remove and remove those attributes from
+    // the base type in the subinterpreter.
+    Py_ssize_t list_size = PyList_Size(keys_to_remove);
+    for (Py_ssize_t i = 0; i &lt; list_size; i++) {
+        PyObject* key = PyList_GetItem(keys_to_remove, i);
+        if (PyDict_DelItem(state->tp_dict, key) &lt; 0) {
+            goto finally;
+        }
+    }
+
+    res = 0;
+
+finally:
+    Py_XDECREF(keys_to_remove);
+    return res;
+}
+</pre><p>
+</p><p>Then at the end of <span class='single-quote'>type_ready()</span>, call that function for builtin types and only if we're in a subinterpreter:
+</p><p>
+</p><pre class="triple-quote C">    if (type->tp_flags &amp; _Py_TPFLAGS_STATIC_BUILTIN) {
+        PyInterpreterState *interp = _PyInterpreterState_GET();
+        if (!_Py_IsMainInterpreter(interp)) {
+            if (fix_builtin_slot_wrappers(type, interp) < 0) {
+                return -1;
+            }
+        }
+    }
+</pre><p>
+</p><p>And that's it. That was my solution. And it worked like a charm.
+</p><p>
+</p><h2>The wait
+</h2><p>
+</p><p>After sending a <a target='_blank' href='https://github.com/python/cpython/pull/117660'>PR</a> with my proposed changes I waited for a couple months until I saw some real activity.
+</p><p><a target='_blank' href='https://github.com/ericsnowcurrently'>Eric Snow</a> is in charge of the subinterpreters implementations. He found a better more focused solution that was less fragile and took into account what would happen if the interpreter was reinitialized.
+</p><p>In the end I decided to close my PR because Eric's pushed the real solution into a separate PR.
+</p><p>I think it would have been cool to ship code to be included in all python interpreters around the world. But I'm happy my analysis helped solve the issue.
+</p><p>In Python 3.12.5 the fix was released: <a target='_blank' href='https://docs.python.org/release/3.12.5/whatsnew/changelog.html#core-and-builtins'>https://docs.python.org/release/3.12.5/whatsnew/changelog.html#core-and-builtins</a>
+</p><p>
+</p><h2>Thanks!
+</h2><p>
+</p><p>I wanted to say thanks again to all Python contributors that helped get this solved. From my experience I felt welcome by the community and that they cared about the time and effort I put in.
+</p><p>I would say it was a great experience that I hope to repeat. And my cheers go to the Python community for setting up such an easy to follow process.
+</p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

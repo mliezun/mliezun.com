@@ -1,0 +1,282 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>Grotsky Part 3: Interpreting</title><meta name="generator" content="Custom"/><meta property="og:title" content="Grotsky Part 3: Interpreting"/><meta property="og:locale" content="en_US"/><meta name="description" content="Part 3 of building my own language series. Interpreting expressions and statement, traversing the Abstract Syntax Tree."/><meta property="og:description" content="Part 3 of building my own language series. Interpreting expressions and statement, traversing the Abstract Syntax Tree."/><meta name="keywords" content="interpreter,expression,ast"/><link rel="canonical" href="https://mliezun.com/2020/04/01/grotsky-part3.html"/><meta property="og:url" content="https://mliezun.com/2020/04/01/grotsky-part3.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Grotsky Part 3: Interpreting"/><meta name="twitter:description" content="Part 3 of building my own language series. Interpreting expressions and statement, traversing the Abstract Syntax Tree."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Part 3 of building my own language series. Interpreting expressions and statement, traversing the Abstract Syntax Tree.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2020/04/01/grotsky-part3.html","headline":"Grotsky Part 3: Interpreting","dateModified":"2020-04-01T00:00:00-03:00","datePublished":"2020-04-01T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2020/04/01/grotsky-part3.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><div>
+
+</div><h2>Grotsky Part 3: Interpreting
+</h2><p class="article-byline"><span class="byline-date">2020-04-01</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">interpreter,expression,ast</span></p><div>
+
+</div><h3>It's slow! 
+</h3><div>
+My interpreter is really, really, wait for it... _Really slow_.
+
+An example of a bad performing grotsky code:
+
+<pre class="triple-quote ">
+# fib: calculates the n-th fibonacci number recursively
+fn fib(n) begin
+    if n < 2 return n
+    return fib(n-2) + fib(n-1)
+end
+println(fib(30))
+</pre>
+
+
+</div><h5>Running the code
+</h5><div>
+<pre class="triple-quote ">
+$ time ./grotsky examples/fib.g
+</pre>
+
+Gives a whopping result of:
+
+<pre class="triple-quote ">
+832040
+
+real    0m11,154s
+user    0m11,806s
+sys     0m0,272s
+</pre>
+
+Almost twelve seconds!!! 
+
+Comparing with a similar python code
+
+<pre class="triple-quote ">
+def fib(n):
+    if n < 2: return n
+    return fib(n-2) + fib(n-1)
+print(fib(30))
+</pre>
+
+Gives a result of:
+
+<pre class="triple-quote ">
+832040
+
+real    0m0,423s
+user    0m0,387s
+sys     0m0,021s
+</pre>
+
+That means, my interpreter is at least 20 times slower than Cpython.
+
+
+</div><h5>Why is it so slow?
+</h5><div>
+<a href="https://www.reddit.com/r/golang/comments/5kv2xx/why_is_golangs_performance_worse_than_javas_in/">Here is an explanation</a>.
+
+As the person from the first comment states, go garbage collector is not well suited for this kind of scenario with heavy allocation of objects.
+
+> Go's GC is not generational, so allocation requires (comparatively speaking) much more work. It's also tuned for low latency (smallest pause when GC has to stop the program) at the expense of throughput (i.e. total speed). This is the right trade-off for most programs but doesn't perform optimally on micro-benchmarks that measure throughtput.
+
+Setting the gc percent at 800 (100 by default) more than halves the time that the function takes to compute:
+
+<pre class="triple-quote ">
+$ time GOGC=800 ./grotsky examples/fib.g
+832040
+
+real    0m5,110s
+user    0m5,182s
+sys     0m0,061s
+</pre>
+
+
+</div><h3>Interpreting functions
+</h3><div>
+Callable interface
+
+<pre class="triple-quote go">
+type callable interface {
+	arity() int
+	call(exec *exec, arguments []interface{}) interface{}
+}
+</pre>
+
+_All grotsky functions must be an object that implements the callable interface._
+
+For that I defined two kinds of structs:
+
+<pre class="triple-quote go">
+type function struct {
+	declaration   *fnStmt
+	closure       *env
+	isInitializer bool
+}
+
+type nativeFn struct {
+	arityValue int
+	callFn  func(exec *exec, arguments []interface{}) interface{}
+}
+</pre>
+
+
+</div><h5>nativeFn
+</h5><div>
+Lets you define standard functions available on all grotsky interpreters. Line <span class="single-quote">println</span>.
+
+<pre class="triple-quote go">
+func (n *nativeFn) arity() int {
+	return n.arityValue
+}
+
+func (n *nativeFn) call(exec *exec, arguments []interface{}) interface{} {
+	return n.callFn(exec, arguments)
+}
+</pre>
+
+From that, println would be pretty straight forward:
+
+<pre class="triple-quote go">
+...
+
+var println nativeFn
+println.arityValue = 1
+println.callFn = func(exec *exec, arguments []interface{}) interface{} {
+    fmt.Println(arguments[0])
+    return nil
+}
+...
+</pre>
+
+
+</div><h5>Ordinary grotsky functions
+</h5><div>
+For ordinary grotsky functions the things are a little bit messier.
+
+First I got to introduce the <span class="single-quote">environment</span> that is an object that holds <span class="single-quote">map[string]interface{}</span> as a dictionary for variables in the local scope and a pointer to another environment that contains variables for the outer scope.
+
+<pre class="triple-quote go">
+type env struct {
+	state *state
+
+	enclosing *env
+	values    map[string]interface{}
+}
+
+func newEnv(state *state, enclosing *env) *env {
+	return &amp;env{
+		state:     state,
+		enclosing: enclosing,
+		values:    make(map[string]interface{}),
+	}
+}
+
+func (e *env) get(name *token) interface{} {
+	if value, ok := e.values[name.lexeme]; ok {
+		return value
+	}
+	if e.enclosing != nil {
+		return e.enclosing.get(name)
+	}
+	e.state.runtimeErr(errUndefinedVar, name)
+	return nil
+}
+
+func (e *env) define(name string, value interface{}) {
+	e.values[name] = value
+}
+</pre>
+
+As you can see, the define method creates a variable on the local scope, and the get methods tries to retrieve a variable first from the local scope and then from the outer scope.
+
+Let's see how functions are implemented.
+
+<pre class="triple-quote go">
+func (f *function) arity() int {
+	return len(f.declaration.params)
+}
+
+func (f *function) call(exec *exec, arguments []interface{}) (result interface{}) {
+	env := newEnv(exec.state, f.closure)
+	for i := range f.declaration.params {
+		env.define(f.declaration.params[i].lexeme, arguments[i])
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			if returnVal, isReturn := r.(returnValue); isReturn {
+				result = returnVal
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
+	exec.executeBlock(f.declaration.body, env)
+
+	return nil
+}
+</pre>
+
+Function <span class="single-quote">arity</span> is pretty simple.
+
+The function <span class="single-quote">call</span> takes an <span class="single-quote">exec</span> object, that is no more than an instance of the interpreter, and the arguments to the function as an array of objects. Then creates a new environment that is surrounded by the environment local to the function definition and defines all the function parameters. Then comes the tricky part, first there is a deferred call to an anonymous function, let's ignore that for a moment, in the end, the function <span class="single-quote">executeBlock</span> gets called. Let's see what that function does:
+
+<pre class="triple-quote go">
+func (e *exec) executeBlock(stmts []stmt, env *env) {
+	previous := e.env
+	defer func() {
+		e.env = previous
+	}()
+	e.env = env
+	for _, s := range stmts {
+		e.execute(s)
+	}
+}
+</pre>
+
+What's happening here is that the interpreter steps into the new environment, saving the previous environment in a variable, and execute all given statements, after that it restores the environment to the previous one. Exactly as a function does.
+
+
+</div><h5>What happens when you hit a <span class="single-quote">return</span>
+</h5><div>
+<pre class="triple-quote go">
+type returnValue interface{}
+
+...
+
+func (e *exec) visitReturnStmt(stmt *returnStmt) R {
+	if stmt.value != nil {
+		panic(returnValue(stmt.value.accept(e)))
+	}
+	return nil
+}
+</pre>
+
+When you get to a return node in the ast, the nodes panics with a return value. This has to do with the fact that you need to go up the call stack and finish the execution of the function, otherwise the function will keep it's execution.
+
+That's the reason of the deferred function we forgot a couple seconds ago:
+
+<pre class="triple-quote go">
+func (f *function) call(exec *exec, arguments []interface{}) (result interface{}) {
+    ...
+
+    defer func() {
+		if r := recover(); r != nil {
+			if returnVal, isReturn := r.(returnValue); isReturn {
+				result = returnVal
+			} else {
+				panic(r)
+			}
+		}
+    }()
+
+    ...
+}
+</pre>
+
+This function recovers from a panic. If the value recovered is of type <span class="single-quote">returnValue</span> it recovers successfully and sets the result value of the function call to the return value, else it panics again.
+
+
+</div><h3>Hasta la vista, baby
+</h3><div>
+That's it for now. There are a lot of nifty stuff to keep talking about. But I think it's enough for now.
+
+Remember to check out the <a href="https://github.com/mliezun/grotsky">source code</a>. And stay tuned for more.
+
+</div></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>

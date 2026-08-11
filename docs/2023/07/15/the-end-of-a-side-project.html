@@ -1,0 +1,60 @@
+<!DOCTYPE HTML/><html lang="en-US" data-theme="auto"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><script>(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+</script><title>The end of a side project</title><meta name="generator" content="Custom"/><meta property="og:title" content="The end of a side project"/><meta property="og:locale" content="en_US"/><meta name="description" content="Cloud Outdated was a personalized digest of updates for cloud services. It's sad to see it go,
+	but it was a fun project to work on, learn some new stuff and collab with a friend.
+	There are some takeaways from this that I'd like to share."/><meta property="og:description" content="Cloud Outdated was a personalized digest of updates for cloud services. It's sad to see it go,
+	but it was a fun project to work on, learn some new stuff and collab with a friend.
+	There are some takeaways from this that I'd like to share."/><meta name="keywords" content="python,webscraping,project,aws"/><link rel="canonical" href="https://mliezun.com/2023/07/15/the-end-of-a-side-project.html"/><meta property="og:url" content="https://mliezun.com/2023/07/15/the-end-of-a-side-project.html"/><meta property="og:site_name" content="mliezun.com"/><meta property="og:image" content="https://mliezun.com/assets/images/logo.png"/><meta property="og:image:alt" content="Miguel Liezun"/><link rel="icon" type="image/png" href="/assets/images/favicon.png"/><link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico"/><link rel="apple-touch-icon" href="/assets/images/favicon.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap"/><meta property="og:type" content="article"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="The end of a side project"/><meta name="twitter:description" content="Cloud Outdated was a personalized digest of updates for cloud services. It's sad to see it go,
+	but it was a fun project to work on, learn some new stuff and collab with a friend.
+	There are some takeaways from this that I'd like to share."/><meta name="twitter:creator" content="@migueliezun"/><meta name="twitter:image" content="https://mliezun.com/assets/images/logo.png"/>
+<script type="application/ld+json">{"description":"Cloud Outdated was a personalized digest of updates for cloud services. It's sad to see it go,
+	but it was a fun project to work on, learn some new stuff and collab with a friend.
+	There are some takeaways from this that I'd like to share.","author":{"@type":"Person","name":"Miguel Liezun"},"@type":"BlogPosting","url":"https://mliezun.com/2023/07/15/the-end-of-a-side-project.html","headline":"The end of a side project","dateModified":"2023-07-15T00:00:00-03:00","datePublished":"2023-07-15T00:00:00-03:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mliezun.com/2023/07/15/the-end-of-a-side-project.html"},"@context":"https://schema.org"}
+</script><link rel="stylesheet" href="/assets/css/style.css"/><script defer="" src="/assets/js/gh-redirect.js"></script></head><body><header class="journal-masthead"><div class="masthead-inner"><div class="masthead-top"><a href="/" class="masthead-title">Miguel Liezun</a><div class="masthead-nav-row"><nav class="masthead-nav" aria-label="Site"><a href="/" class="masthead-nav-link">Home</a><a href="/archive/index.html" class="masthead-nav-link">Archive</a><a href="/now/index.html" class="masthead-nav-link">Now</a></nav><button class="theme-toggle" id="theme-toggle" title="Toggle theme"><img src="/assets/images/circle-half.svg" alt="Toggle theme"/></button></div></div></div></header><div class="body-wrapper"><main class="body-content"><span class="journal-meta-wrap"><span class="journal-meta human-written">Human-written
+<span class="ai-tag-popover">This post was fully written by a human
+ 
+<a href="/2025/11/19/ai-blog.html" class="ai-tag-read-more">Read more</a></span></span></span><article><h2>The end of a side project</h2><p class="article-byline"><span class="byline-date">2023-07-15</span><span class="byline-author">Miguel Liezun</span><span class="byline-tags">python,webscraping,project,aws</span></p><p>Cloud Outdated was a personalized digest of updates for cloud services. It's sad to see it go,
+			but it was a fun project to work on, learn some new stuff and collab with a friend.
+			There are some takeaways from this that I'd like to share.
+</p><h3>Building something simple is hard</h3><p>From the beginning we were trying to build a simple product to get notified when new versions
+			of Python were supported in AWS Lambda. But we figured we could support other things too, like
+			all Lambda runtimes, then also GCP and Azure, then more services of each one.
+Features started piling up pretty quickly.
+</p><p>When building stuff I try to think of every edge case, even the most improbable ones, and make
+			the software infallible. Of course, it's impossible to succeed at that, software will always be fallible.
+And this premature optimization ends up making the project more complex than it should be.
+</p><p>We planned to work on this for a 1 or 2 months, and it ended up taking 6+ months :-).
+</p><p>My takeaway here is: start building the dumbest thing possible that gets the job done, then adjust as needed.
+</p><h3>Getting users is hard</h3><p>We're killing this project because nobody uses it.
+And nobody except us has used it since it was launched more than a year ago.
+Some people subscribed but never even opened an email.
+</p><p>We tried to advertise in our social media and post it in different builders communities.
+But that will get you so far if you're not an influencer that has the right audience.
+</p><p>We thought that we'll get more traffic from organic search or people telling their friends about this.
+But in the end I think nobody really needed something like this that much.
+</p><p>My takeaway here is: building something that people really want and getting the product to the hands
+			of the people that want it is very complicated. You should think very deeply about what problem your
+			product is solving and how your users will find you.
+</p><h3>The money</h3><p>This has cost like $200 (US dollars) since inception. For two people that's like $100 each.
+It's not a lot, but for something that has no users that's quite expensive.
+</p><p>We used Lambdas to serve this project.
+I feel like we were promised that the cloud and serverless are cheap and easy solution.
+But in my opinion it doesn't seem to be the case.
+It's definitely not easier nor cheaper than having a PHP website in this case.
+I'm sure there are other cases in which it makes more sense.
+</p><p>This is also a reason of why we're killing the project.
+Our service started failing because after a deploy dependencies were updated and the code
+			was too big to fit on a Lambda.
+It would have been a lot of work to fix it, so we decided to kill it and save some bucks every month.
+</p><p>For personal projects which you're not sure how they're going to scale,
+			I think serverless is probably not the right choice.
+Serverless makes sense if you're going to have huge bursts of traffic and don't want
+			to handle a lot of infra.
+</p><p>My takeaway here is: beware of the cloud, if you're just building a small side project
+			or don't have huge infra needs stick with the cheapest providers (Hostinger, PythonAnywhere, Hetzner)
+			and avoid cloud providers (GCP, Azure, AWS).
+</p><h3>Final thoughts</h3><p>If I haven't made this clear enough, building a successful product is *hard*.
+There are many things to think about when starting, and the technical stuff hopefully
+			is the easy part.
+I think these are the 3 most important lessons that I've learned working on this:
+<ul><li>Build the dumbest thing that does the job, improve as needed.</li><li>Think deeply about what problem are you solving and how you're going to deliver the solution to the people that need it.</li><li>Beware of the cloud, if possible use a cheaper provider. It will save you money and headaches.</li></ul></p></article><footer class="site-footer"><div class="footer-colophon"><p class="footer-line">Published with 
+<a target="_blank" href="https://github.com/mliezun/grotsky">Grotsky</a><a target="_blank" href="https://github.com/mliezun/mliezun.com">Source</a><a href="/feed.xml">RSS</a></p><p class="footer-line footer-links"><a target="_blank" href="https://github.com/mliezun">GitHub</a><a target="_blank" href="https://x.com/migueliezun">X</a><a target="_blank" href="https://www.linkedin.com/in/miguel-liezun-8697a9168/">LinkedIn</a></p></div></footer></main></div><script defer="" src="/assets/js/theme-switcher.js"></script><link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"/><script defer="" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script><script defer="" src="/assets/js/highlight-init.js"></script></body></html>
